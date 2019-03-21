@@ -1,0 +1,14 @@
+eclipse.preferences.version=1
+encoding//browser/chrome.py=utf-8
+encoding//qt4c/accessible.py=utf-8
+encoding//qt4c/app.py=utf-8
+encoding//qt4c/keyboard.py=utf-8
+encoding//qt4c/qpath.py=utf-8
+encoding//qt4c/testcase.py=utf-8
+encoding//qt4c/uiacontrols.py=utf-8
+encoding//qt4c/wincontrols.py=utf-8
+encoding//qt4c/wintypes.py=utf-8
+encoding//tests/test_browser.py=utf-8
+encoding//winlib/chrome.py=utf-8
+encoding//winlib/process.py=utf-8
+encoding/setup.py=utf-8

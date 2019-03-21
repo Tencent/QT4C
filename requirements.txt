@@ -1,0 +1,4 @@
+qtaf
+Pillow
+comtypes
+pywin32; sys_platform == 'win32'

@@ -2,12 +2,12 @@
 #
 # Tencent is pleased to support the open source community by making QTA available.
 # Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
+# Licensed under the BSD 3-Clause License (the "License"); you may not use this
 # file except in compliance with the License. You may obtain a copy of the License at
-# 
+#
 # https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
+#
+# Unless required by applicable law or agreed to in writing, software distributed
 # under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
@@ -23,21 +23,23 @@ import util
 import pythoncom
 import win32gui
 
-from qt4c import gfcontrols
 from qt4c import wincontrols
 from qt4c import uiacontrols
-from qt4c.exceptions import ControlExpiredError,ControlAmbiguousError,ControlNotFoundError
+from qt4c.exceptions import ControlExpiredError, ControlAmbiguousError, ControlNotFoundError
 import testbase.logger as logger
+
 
 class EnumQPathKey(object):
     MAX_DEPTH = "MAXDEPTH"
     INSTANCE = "INSTANCE"
     UI_TYPE = "UITYPE"
 
+
 class EnumUIType(object):
     WIN = 'Win'
     GF = 'GF'
     UIA = 'UIA'
+
 
 class QPathError(Exception):
     """QPath异常类定义
@@ -69,18 +71,17 @@ class QPath(object):
     Qpath ="/ ClassName='TxGuiFoundation' && Caption~='QQ\d+' && Instance='-1' 
             / UIType='GF' && name='mainpanel' && MaxDepth='10'"
     '''
-    
+
     PROPERTY_SEP = '&&'
     OPERATORS = ["=", "~="]
     MATCH_FUNCS = {}
-    MATCH_FUNCS["="]=lambda x,y: x==y
-    MATCH_FUNCS["~="]= lambda string, pattern: re.search(pattern, string) != None
+    MATCH_FUNCS["="] = lambda x, y: x == y
+    MATCH_FUNCS["~="] = lambda string, pattern: re.search(pattern, string) != None
     CONTROL_TYPES = {
                    EnumUIType.WIN: wincontrols.Control,
-                   EnumUIType.GF: gfcontrols.Control,
                    EnumUIType.UIA: uiacontrols.Control
                    }
-    
+
     def __init__(self, qpath_string):
         """Contructor
         
@@ -88,11 +89,10 @@ class QPath(object):
         :param qpath_string: QPath字符串   
         """
         if not isinstance(qpath_string, basestring):
-            raise QPathError("输入的QPath(%s)不是字符串!"  % (qpath_string) )
+            raise QPathError("输入的QPath(%s)不是字符串!" % (qpath_string))
         self._strqpath = qpath_string
         self._path_sep, self._parsed_qpath = self._parse(qpath_string)
         self._error_qpath = None
-     
 
     def _find_controls_recur(self, root, qpath):
         '''递归查找控件
@@ -104,23 +104,23 @@ class QPath(object):
         '''
         qpath = qpath[:]
         props = qpath[0]
-        props = dict((entry[0].upper(), entry[1]) for entry in props.items()) #使属性值大小写不敏感
-        max_depth = 1 #默认depth是1
-        if ( EnumQPathKey.MAX_DEPTH in props):
+        props = dict((entry[0].upper(), entry[1]) for entry in props.items())  # 使属性值大小写不敏感
+        max_depth = 1  # 默认depth是1
+        if (EnumQPathKey.MAX_DEPTH in props):
             max_depth = int(props[EnumQPathKey.MAX_DEPTH][1])
             if max_depth <= 0 :
                 raise QPathError("MaxDepth=%s应该>=1" % max_depth)
             del props[EnumQPathKey.MAX_DEPTH]
-        
-        instance = None #默认没有index属性
+
+        instance = None  # 默认没有index属性
         if (EnumQPathKey.INSTANCE in props):
             instance = int(props[EnumQPathKey.INSTANCE][1])
             del props[EnumQPathKey.INSTANCE]
-            
+
         children = None
         if props.has_key(EnumQPathKey.UI_TYPE):
-            uitype =  props[EnumQPathKey.UI_TYPE][1]
-            del props[EnumQPathKey.UI_TYPE]  
+            uitype = props[EnumQPathKey.UI_TYPE][1]
+            del props[EnumQPathKey.UI_TYPE]
             child_ctrl_type = self.CONTROL_TYPES[uitype]
             if not isinstance(root, child_ctrl_type):
                 try:
@@ -132,36 +132,36 @@ class QPath(object):
                 children = root.Children
             except ControlExpiredError:
                 children = []
-                
+
         found_child_controls = []
         for ctrl in children:
             if(self._match_control(ctrl, props)):
                 found_child_controls.append(ctrl)
-            
-            if(max_depth >1): 
+
+            if(max_depth > 1):
                 props_copy = props.copy()
-                props_copy[EnumQPathKey.MAX_DEPTH]= ['=', str(max_depth -1)]
+                props_copy[EnumQPathKey.MAX_DEPTH] = ['=', str(max_depth - 1)]
                 _controls, _ = self._find_controls_recur(ctrl, [props_copy])
                 found_child_controls += _controls
         if not found_child_controls:
             return [], qpath
-        
-        if instance  != None:
+
+        if instance != None:
             try:
                 found_child_controls = [found_child_controls[instance]]
             except IndexError:
                 return [], qpath
-        
+
         qpath.pop(0)
-        
-        if not qpath: #找到控件
+
+        if not qpath:  # 找到控件
             return found_child_controls, qpath
-            
-        else: #在子孙中继续寻找
-            found_ctrls =[]
+
+        else:  # 在子孙中继续寻找
+            found_ctrls = []
             error_path = qpath
             for root in found_child_controls:
-                ctrls, remain_qpath= self._find_controls_recur(root, qpath)
+                ctrls, remain_qpath = self._find_controls_recur(root, qpath)
                 found_ctrls += ctrls
                 if len(remain_qpath) < len(error_path):
                     error_path = remain_qpath
@@ -171,9 +171,8 @@ class QPath(object):
             for ctrl in cpy_found_ctrls:
                 if ctrl not in found_ctrls:
                     found_ctrls.append(ctrl)
-                    
+
             return found_ctrls, error_path
-    
 
     def _match_control(self, control, props):
         """控件是否匹配给定的属性
@@ -185,23 +184,23 @@ class QPath(object):
         for propname in props:
             if not propname in attrs:
                 return False
-            
-            try: 
+
+            try:
                 act_prop_value = getattr(control, attrs[propname])
-            except pythoncom.com_error as e: 
+            except pythoncom.com_error as e:
                 return False
             except win32gui.error as e:
-                if e[0] == 1400: #无效窗口句柄
+                if e[0] == 1400:  # 无效窗口句柄
                     return False
                 else:
                     raise e
             except ControlExpiredError as e:
                 return False
-                                   
+
             operator, exp_prop_value = props[propname]
             if act_prop_value is None:
                 return False
-            
+
             if isinstance(act_prop_value, bool):
                 if exp_prop_value.upper() == 'TRUE':
                     exp_prop_value = True
@@ -211,7 +210,7 @@ class QPath(object):
                     raise QPathError('不正确的bool属性值:%s' % exp_prop_value)
                 if act_prop_value != exp_prop_value:
                     return False
-            
+
             elif isinstance(act_prop_value, int) or isinstance(act_prop_value, long):
                 if re.search('^0x', exp_prop_value) != None:
                     exp_prop_value = int(exp_prop_value, 16)
@@ -219,31 +218,31 @@ class QPath(object):
                     exp_prop_value = int(exp_prop_value)
                 if act_prop_value != exp_prop_value:
                     return False
-            
+
             elif isinstance(exp_prop_value, basestring):
                 if not  self.MATCH_FUNCS[operator](util.myEncode(act_prop_value), util.myEncode(exp_prop_value)):
                     return False
-                    
+
             else:
                 raise QPathError('不支持控件属性值类型：%s' % type(act_prop_value))
-            
-        return True            
+
+        return True
 
     def _parse_property(self, prop_str):
         """解析property字符串，返回解析后结构
         
         例如将 "ClassName='Dialog' " 解析返回 {ClassName: ['=', 'Dialog']}
         """
-        
+
         parsed_pattern = "(\w+)\s*([=~!<>]+)\s*[\"'](.*)[\"']"
         match_object = re.match(parsed_pattern, prop_str)
         if match_object is None:
             raise QPathError("属性(%s)不符合QPath语法" % prop_str)
         prop_name, operator, prop_value = match_object.groups()
         if not operator in self.OPERATORS:
-            raise QPathError("QPath不支持操作符：%s"  % operator) 
+            raise QPathError("QPath不支持操作符：%s" % operator)
         return {prop_name: [operator, prop_value]}
-        
+
     def _parse(self, qpath_string):
         """解析qpath，并返回QPath的路径分隔符和解析后的结构
         
@@ -256,28 +255,28 @@ class QPath(object):
         qpath_string = qpath_string.strip()
         seperator = qpath_string[0]
         locators = qpath_string[1:].split(seperator)
-        
+
         parsed_qpath = []
         for locator in locators:
             props = locator.split(self.PROPERTY_SEP)
             parsed_locators = {}
             for prop_str in props:
                 prop_str = prop_str.strip()
-                if len(prop_str) == 0: 
+                if len(prop_str) == 0:
                     raise QPathError("%s 中含有空的属性。" % locator)
                 parsed_props = self._parse_property(prop_str)
                 parsed_locators.update(parsed_props)
             parsed_qpath.append(parsed_locators)
         return seperator, parsed_qpath
-       
+
     def __str__(self):
         '''返回格式化后的QPath字符串
         '''
         qpath_str = ""
         for locator in self._parsed_qpath:
             qpath_str += self._path_sep + " "
-            delimit_str = " "  + self.PROPERTY_SEP + " "
-            locator_str = delimit_str.join(["%s %s '%s'"  % (key, locator[key][0], locator[key][1]) for key in locator])
+            delimit_str = " " + self.PROPERTY_SEP + " "
+            locator_str = delimit_str.join(["%s %s '%s'" % (key, locator[key][0], locator[key][1]) for key in locator])
             qpath_str += locator_str
         return qpath_str
 
@@ -288,9 +287,9 @@ class QPath(object):
         """
         if self._error_qpath:
             props = self._error_qpath[0]
-            delimit_str = " "  + self.PROPERTY_SEP + " "
-            return delimit_str.join(["%s %s '%s'"  % (key, props[key][0], props[key][1]) for key in props]) 
-        
+            delimit_str = " " + self.PROPERTY_SEP + " "
+            return delimit_str.join(["%s %s '%s'" % (key, props[key][0], props[key][1]) for key in props])
+
     def search(self, root=None):
         """根据qpath和root查找控件
         
@@ -298,24 +297,26 @@ class QPath(object):
         :param root:  查找开始的控件
         :return: 返回找到的控件列表
         """
-        
+
         if root is None:
-            root = wincontrols.Control() #desktop Control
+            root = wincontrols.Control()  # desktop Control
         controls, self._error_qpath = self._find_controls_recur(root, self._parsed_qpath)
         return controls
-    
+
+
 def _find_by_name(root, name):
-    qp=QPath("/Name='%s'&&MaxDepth='50'" % name)
-    controls=qp.search(root)
-    count=len(controls)
-    if count>1:
-        logger.warning("根据qpath<%s>找到%d个控件，请优化qpath" % (qp._strqpath,count))
+    qp = QPath("/Name='%s'&&MaxDepth='50'" % name)
+    controls = qp.search(root)
+    count = len(controls)
+    if count > 1:
+        logger.warning("根据qpath<%s>找到%d个控件，请优化qpath" % (qp._strqpath, count))
         return controls[0]
-    elif count==0:
+    elif count == 0:
         print qp._strqpath
         raise ControlNotFoundError("<%s>对应的控件不存在" % qp._strqpath)
     else:
         return controls[0]
-        
+
+
 if __name__ == '__main__':
     pass

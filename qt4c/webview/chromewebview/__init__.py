@@ -70,7 +70,6 @@ class ChromeWebView(WebViewBase):
         time0 = time.time()
         while time.time() - time0 < timeout:
             frame_tree = self._driver.get_frame_tree()
-            # print frame_tree
             frame_id = frame_tree['frame']['id']
             if len(frame_xpaths) == 0: 
                 # 顶层frame
@@ -154,7 +153,8 @@ class ChromeWebView(WebViewBase):
             }
             var src = frame.getAttribute('src');
             if(src == '' || src == 'about:blank') return '';
-            throw new Error('not supported iframe ' + frame.outerHTML);
+            result.push('//iframe[@src="' + src + '"]');
+            return result.toString();
         }
         return '';
     };

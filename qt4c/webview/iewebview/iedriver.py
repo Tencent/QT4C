@@ -114,16 +114,26 @@ class IEDriver(object):
                 win = win32com.client.dynamic.Dispatch(win)
                 doc = self._retry_for_access_denied(lambda: win.document)
             return doc
-                
+
+    def get_frames(self, doc):
+        '''
+        '''
+        try:
+            return doc.frames
+        except pywintypes.com_error as e:
+            if (e.args[0] % 0x100000000) == 0x80020009 and (e.args[2][5] % 0x100000000) == 0x80020003:
+                return doc.GetElementsByTagName('iframe')
+            else: raise
+
     def get_frame_window(self, win, frame_id, url):
         '''获取doc中id或name为frame_id，或者url匹配的frame的IHTMLWindow对象
         '''
-        # print 'get_frame_window', win
         if not win: doc = self._doc
         else: doc = win.document
+        frames = self.get_frames(doc)
         if isinstance(frame_id, (str, unicode)) and len(frame_id) > 0:
             try:
-                frame = doc.frames.item(frame_id)
+                frame = frames.item(frame_id)
                 doc = self._get_document(frame)
                 return doc.parentWindow
             except pywintypes.com_error, e:
@@ -133,8 +143,13 @@ class IEDriver(object):
                 else: raise e
         else:
             # 使用url查找
-            for i in range(doc.frames.length):
-                frame = doc.frames.item(i)
+            if url[0] == '/':
+                # add domain
+                parent_url = doc.url
+                pos = parent_url.find('/', 8)
+                url = parent_url[:pos] + url
+            for i in range(frames.length):
+                frame = frames.item(i)
                 doc = self._get_document(frame)
                 if doc.url == url: return doc.parentWindow
             else:

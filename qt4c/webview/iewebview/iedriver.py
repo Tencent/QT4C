@@ -45,7 +45,7 @@ class IEDriver(object):
         '''初始化com对象
         '''
         if hasattr(self, '_doc'): logging.debug('[IEDriver] re_init com_obj')
-        else: time.sleep(2)  # 部分IE10上发现打开页面时不sleep会导致拒绝访问错误
+        # else: time.sleep(2)  # 部分IE10上发现打开页面时不sleep会导致拒绝访问错误
         msg = win32gui.RegisterWindowMessage('WM_HTML_GETOBJECT')
         for _ in range(3):
             try:
@@ -53,8 +53,14 @@ class IEDriver(object):
                 ob = pythoncom.ObjectFromLresult(result, pythoncom.IID_IDispatch, 0)
                 self._doc = win32com.client.dynamic.Dispatch(ob)
                 self._win = self._doc.parentWindow
+                self.handle_error_page(self._doc)
                 break
-            except AttributeError, e:
+            except pythoncom.com_error as e:
+                if (e.args[0] % 0x100000000) == 0x800401F0:
+                    # 尚未调用 CoInitialize。
+                    pythoncom.CoInitialize()
+                    return self._init_com_obj()
+            except AttributeError as e:
                 # 页面跳转时易发生此问题
                 logging.debug(str(e))
                 time.sleep(0.5)
@@ -70,7 +76,7 @@ class IEDriver(object):
         while time.time() - time0 < timeout:
             try:
                 return func()
-            except pywintypes.com_error, e:
+            except pywintypes.com_error as e:
                 if (e.args[0] % 0x100000000) == 0x80020009:
                     err_msg = e.args[2][2].encode('utf8').strip()
                     logging.info('[IEDriver] retry error: %s' % err_msg)
@@ -82,6 +88,7 @@ class IEDriver(object):
                         # 由于出现错误 80020101 而导致此项操作无法完成
                         # 一般是页面加载未完成
                         time.sleep(1)
+                        timeout = 20
                         continue
                 raise e
         else:
@@ -93,10 +100,14 @@ class IEDriver(object):
         try:
             self._doc._oleobj_.GetIDsOfNames('readyState')
             return True
-        except pywintypes.com_error, e:
+        except pywintypes.com_error as e:
             if (e.args[0] % 0x100000000) == 0x80070005:
                 self._init_com_obj()  # 重新初始化
                 return False
+            elif (e.args[0] % 0x100000000) == 0x800401F0:
+                # 尚未调用 CoInitialize。
+                pythoncom.CoInitialize()
+                return self._check_valid()
             raise e
         
     def _get_document(self, frame):
@@ -154,7 +165,36 @@ class IEDriver(object):
                 if doc.url == url: return doc.parentWindow
             else:
                 raise RuntimeError('未找到url=%s 的frame' % url)
+
+    def handle_error_page(self, doc):
+        '''处理错误页面
+        '''
+        if doc.URL.startswith('res://ieframe.dll/invalidcert.htm'):
+            # 证书错误页面
+            target_url = None
+            pos = doc.URL.find('#')
+            if pos > 0:
+                target_url = doc.URL[pos + 1:]
                 
+            for elem in doc.all:
+                if elem.id == 'overridelink':
+                    logging.info('[IEDriver] Auto click continue button, target url is %s' % target_url)
+                    elem.click()
+                    break
+            else:
+                raise RuntimeError('Find continue button failed')
+
+            if target_url:
+                time0 = time.time()
+                timeout = 30
+                while time.time() - time0 < timeout:
+                    if not doc.URL.startswith('res://') and doc.readyState == 'complete':
+                        break
+                    time.sleep(0.5)
+                else:
+                    logging.warn('Waiting for jump to target url timeout')
+                    
+                    
     def eval_script(self, frame_win, script, use_eval=True):
         '''
         IE10以上异常对象才有stack属性
@@ -163,6 +203,7 @@ class IEDriver(object):
         logging.debug('[IEDriver] eval script: %s' % script[:200].strip())
         if not isinstance(script, unicode):
             script = script.decode('utf8')  # 必须使用unicode编码
+
         if use_eval:
             script = script.replace('\\', r'\\')
             script = script.replace('"', r'\"')
@@ -197,8 +238,8 @@ class IEDriver(object):
             frame_doc = self._doc
         else:
             frame_doc = frame_win.document
-        
-        self._retry_for_access_denied(lambda: frame_win.execScript(script))
+
+        self._retry_for_access_denied(lambda: frame_win.execScript(script)) # 
         if not use_eval: return
         
         if not self._check_valid(): return  # 一般是页面发生跳转，此时无法获取到直接结果
@@ -212,29 +253,5 @@ class IEDriver(object):
         return result
     
 if __name__ == '__main__':
-    logging.root.level = logging.DEBUG
-    hwnd = 0x0003316E
-    driver = IEDriver(hwnd)
-    # raw_input('xxx')
-    script = 'function xxx(){return ie_driver_lib};xxx();'
-    script = r'ie_driver_lib.selectNodes("//iframe[@id=\"login_frame\"]")[0]'
-    # script = 'location.href'
-#    script = '''
-#     function yyy(){
-#         console.log("xxx");
-#     }
-#     window.ttt = 123;
-#     '''
-    # script = 'document.getElementById("login_frame").execScript("alert(location.href)")'
-    
-    script = '''qt4w_driver_lib.selectNode('//a[text()="退出"]')'''
-    print driver.eval_script(None, script)  # IEDriver.driver_
-    exit()
-    script = 'location.href="http://news.qq.com/";'
-    # print driver.eval_script(None, script)
-    raw_input('xx')
-    # driver = IEDriver(hwnd)
-    script = 'location.href'
-    print driver.eval_script(None, script)  # IEDriver.driver_
-    # print driver.get_attribute(['//iframe[@id="login_frame"]'], 'src1')
+    pass
     

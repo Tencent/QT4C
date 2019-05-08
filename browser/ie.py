@@ -247,6 +247,7 @@ try:
     class IEWindow_QT4W(win32.Window):
         '''IE窗口 qt4w使用
         '''
+        _timeout = Timeout(120, 1)
 
         def __init__(self, process_id):
             '''初始化，进程id
@@ -280,10 +281,10 @@ try:
                 qp = QPath("/classname='TabWindowClass' && visible='True'/maxdepth='3' && classname='Internet Explorer_Server'")
             else:
                 qp = QPath("/classname='Frame Tab' && visible='True'/maxdepth='3' && classname='Internet Explorer_Server'")
-            old_timeout = win32.Control._timeout
-            win32.Control._timeout = self._timeout
+
             ie_window = win32.Control(root=self, locator=qp)
-            win32.Control._timeout = old_timeout
+            ie_window._timeout = self._timeout
+            ie_window.HWnd
             return ie_window
 
         @property

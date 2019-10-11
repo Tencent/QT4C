@@ -18,15 +18,16 @@
 
 import logging, os, re, time
 import shutil
-from qt4c.qpath import QPath
-from qt4c.wincontrols import Window
-
 import win32api
+import win32com.client
 import win32event
 import win32gui
 
 from qt4w.browser.browser import IBrowser
+from qt4c.qpath import QPath
 from qt4c.webview.chromewebview import ChromeWebView
+from qt4c.webview.chromewebview.chromedriver import ChromeDriver
+from qt4c.wincontrols import Window
 
 
 class ChromeBrowser(IBrowser):
@@ -57,7 +58,7 @@ class ChromeBrowser(IBrowser):
                 return [win]
             else:
                 return []
-        except ControlAmbiguousError, e:
+        except ControlAmbiguousError as e:
             pattern = re.compile(r'找到(\d+)个控件')
             ret = pattern.search(str(e))
             if not ret: raise
@@ -100,6 +101,7 @@ class ChromeBrowser(IBrowser):
     def find_by_url(self, url, page_cls=None, timeout=10):
         '''在当前打开的页面中查找指定url,返回WebPage实例，如果未找到，则抛出异常
         '''
+        from qt4c.exceptions import TimeoutError
         time0 = time.time()
         while time.time() - time0 < timeout:
             try:
@@ -109,7 +111,7 @@ class ChromeBrowser(IBrowser):
                 logging.warn('[ChromeBrowser] search chrome window failed: %s' % e)
                 time.sleep(0.5)
         else:
-            raise
+            raise TimeoutError
         return self.get_page_cls(webview, page_cls)
      
     def get_page_cls(self, webview, page_cls=None):
@@ -144,8 +146,6 @@ class ChromeBrowser(IBrowser):
         
         returns ChromeWebView: ChromeWebView类
         '''
-        import win32com.client
-        from qt4c.webview.chromewebview.chromedriver import ChromeDriver
         chrome_path = self.get_browser_path()
         for port in self._port_list:
             chrome_driver = ChromeDriver(port)
@@ -185,13 +185,52 @@ class ChromeBrowser(IBrowser):
                 raise RuntimeError('当前标签页不在窗口最前端！')
         else:
             raise RuntimeError('%s对应的chrome进程不存在' % url)
+
+
+    def clear_cache(self):
+        for p in self._port_list:
+            temp_dir = self._temp_dir % p
+            if os.path.isdir(temp_dir):
+                logging.info('clear dir %s' % temp_dir)
+                try:
+                    shutil.rmtree(temp_dir)
+                except:
+                    logging.error('clear dir %s failed' % temp_dir)
+
+    def close(self):
+        chrome_path = self.get_browser_path()
+        wmi = win32com.client.GetObject('winmgmts:')
+        for p in wmi.InstancesOf('win32_process'):
+            if not p.CommandLine:
+                continue
+            
+            if p.CommandLine.startswith(chrome_path) or p.CommandLine.startswith('"%s"' % chrome_path):
+                items = p.CommandLine[len(chrome_path):].split()
+                if not items or items[0].startswith('--type='): continue  # 都不是Browser进程
+                for item in items:
+                    if item.find('=') != -1:
+                        [commandType, commandValue] = item.split('=', 1)
+                        if(commandType == '--remote-debugging-port' and int(commandValue) in self._port_list):
+                            try:
+                                p.Terminate
+                                time.sleep(0.5) # 等待进程完全退出
+                                self.clear_cache()
+                                break
+                            except Exception as e:
+                                logging.error('kill process failed, error: %s' % e)
     
     @staticmethod
     def killall():
         '''杀掉所有chrome进程
         '''
-        from winlib.process import ProcessFactory
-        ProcessFactory.getProcesses('chrome.exe').terminate()
+        wmi = win32com.client.GetObject('winmgmts:')
+        for p in wmi.InstancesOf('win32_process'):
+            if p.Name == 'chrome.exe':
+                try:
+                    p.Terminate
+                except:
+                    pass
+
         for it in os.listdir(ChromeBrowser.temp_path):
             p = os.path.join(ChromeBrowser.temp_path, it)
             if os.path.isdir(p) and it.startswith('Chrome_'):

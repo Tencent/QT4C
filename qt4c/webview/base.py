@@ -16,13 +16,16 @@
 '''PC端WebView基类
 '''
 
+import ctypes
+import sys
+
+import win32con
+import win32gui
+
+from qt4c.filedialog import FileDialog
 from qt4c.mouse import Mouse, MouseFlag, MouseClickType
 from qt4c.qpath import QPath
-
-import win32gui, win32con
-
 from qt4w.webview.webview import IWebView
-from qt4c.filedialog import FileDialog
 
 
 class WebViewBase(IWebView):
@@ -65,9 +68,21 @@ class WebViewBase(IWebView):
             raise JavaScriptError(frame_xpaths, result[1:])
         else:
             raise ValueError('执行JavaScript返回结果错误：%r' % result)
+
+    def _handle_offset(self, x_offset, y_offset):
+        '''win10上如果设置了DPI需要进行坐标修正
+        '''
+        winver = sys.getwindowsversion()
+        ratio = 1.0
+        if int(winver[0]) == 6 and int(winver[1]) == 2 and int(winver[2]) >= 9200:
+            # win10
+            dpi = ctypes.windll.user32.GetDpiForWindow(self._window.HWnd)
+            ratio = dpi / 96.0
+        return x_offset / ratio, y_offset / ratio
     
     def _inner_click(self, flag, click_type, x_offset, y_offset,):
         self.activate()
+        x_offset, y_offset = self._handle_offset(x_offset, y_offset)
         new_x, new_y = win32gui.ClientToScreen(self._window.HWnd, (int(x_offset), int(y_offset)))
         if self._offscreen_win:
             new_x += self._window.BoundingRect.Left - self._offscreen_win.BoundingRect.Left

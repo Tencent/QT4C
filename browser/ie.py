@@ -99,7 +99,7 @@ class IEWindow(win32.Window):
         '''返回当前的URL地址
         '''
         qpstr = "/classname='WorkerW' && visible='True' /classname='ReBarWindow32' \
-        /classname~='(Address|ComboBox)'/maxdepth='3' && classname='Edit'"
+        /classname~='(Address|ComboBox)' && Instance='0' /maxdepth='3' && classname='Edit'"
 
         addr_edit = win32.Control(root=self, locator=QPath(qpstr))
         return addr_edit.Caption

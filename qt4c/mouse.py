@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 """
 鼠标操作模块
@@ -19,6 +12,7 @@
 import win32api
 import win32con
 import win32gui
+import winerror
 import time
 
 class MouseFlag(object):
@@ -132,18 +126,18 @@ class Mouse(object):
             try:
                 win32gui.SendMessageTimeout(hwnd, _mouse_msg_param[flag][0], _mouse_msg_param[flag][2] | keystate, (c_y << 16) | c_x, 0, 1000)
             except win32gui.error as e:
-                if e[0] == 1400: #无效窗口句柄，有些窗口post第一个消息后就会消失
+                if e.winerror == winerror.ERROR_INVALID_WINDOW_HANDLE: #无效窗口句柄，有些窗口post第一个消息后就会消失
                     pass
-                elif e[0] == 1460: #timeout
+                elif e.winerror == winerror.ERROR_TIMEOUT: #timeout
                     win32gui.SendMessageTimeout(hwnd, win32con.WM_NULL, 0, 0, 0, 30000) #发送NULL确认上个消息已处理
                 else:
                     raise e
             try:
                 win32gui.SendMessageTimeout(hwnd, _mouse_msg_param[flag][1], 0 | keystate, (c_y << 16) | (c_x) , 0, 1000)
             except win32gui.error as e:
-                if e[0] == 1400: #无效窗口句柄，有些窗口post第一个消息后就会消失
+                if e.winerror == winerror.ERROR_INVALID_WINDOW_HANDLE: #无效窗口句柄，有些窗口post第一个消息后就会消失
                     pass
-                elif e[0] == 1460:#timeout
+                elif e.winerror == winerror.ERROR_TIMEOUT:#timeout
                     win32gui.SendMessageTimeout(hwnd, win32con.WM_NULL, 0, 0, 0, 30000)#发送NULL确认上个消息已处理
                 else:
                     raise e 
@@ -187,7 +181,7 @@ class Mouse(object):
                 win32gui.PostMessage(hwnd, _mouse_msg_param[flag][0], _mouse_msg_param[flag][2] | keystate, (c_y << 16) | c_x)
                 win32gui.PostMessage(hwnd, _mouse_msg_param[flag][1], 0 | keystate, (c_y << 16) | (c_x) )
             except win32gui.error as e:
-                if e[0] == 1400: #无效窗口句柄，有些窗口post第一个消息后就会消失
+                if e.winerror == winerror.ERROR_INVALID_WINDOW_HANDLE: #无效窗口句柄，有些窗口post第一个消息后就会消失
                     pass
                 else:
                     raise e

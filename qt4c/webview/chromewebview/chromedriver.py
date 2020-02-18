@@ -1,16 +1,9 @@
 # -*- coding: UTF-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 
 '''Chrome浏览器驱动
@@ -19,9 +12,10 @@
 import time
 import json
 import logging
-import urllib2
 import threading
+import six
 from testbase.util import smart_text
+from six.moves import urllib
 
 class ChromeDriverError(RuntimeError):
     '''Chrome驱动错误
@@ -53,18 +47,18 @@ class ChromeDriver(object):
         '''获取打开的页面列表
         '''
         result = []
-        null_proxy_handler = urllib2.ProxyHandler({})
-        opener = urllib2.build_opener(null_proxy_handler)
-        urllib2.install_opener(opener)  # 强制不使用代理
-        req = urllib2.Request(url='http://localhost:%d/json' % self._port,
+        null_proxy_handler = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(null_proxy_handler)
+        urllib.request.install_opener(opener)  # 强制不使用代理
+        req = urllib.request.Request(url='http://localhost:%d/json' % self._port,
                           headers={'User-Agent': 'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)'})
         timeout = 10
         time0 = time.time()
         while time.time() - time0 < timeout:
             try:
-                ret = urllib2.urlopen(req).read()
+                ret = urllib.request.urlopen(req).read()
                 break
-            except urllib2.URLError, e:
+            except urllib.error.URLError as e:
                 logging.warn('get_page_list error: %s' % e)
                 time.sleep(1)
         else:
@@ -110,10 +104,10 @@ class WebkitDebugger(object):
 #         self._ws = websocket.WebSocket()
 #         self._ws.connect(self._ws_addr)
         self._ws = websocket.WebSocketApp(self._ws_addr,
-                              on_open=self.on_open,
-                              on_message=self.on_message,
-                              on_error=self.on_error,
-                              on_close=self.on_close)
+                              on_open=lambda ws: self.on_open(ws),
+                              on_message=lambda ws, message: self.on_message(ws, message),
+                              on_error=lambda ws, error: self.on_error(ws, error),
+                              on_close=lambda ws: self.on_close(ws))
         self._seq = 0
         self._connected = False
         self._context_dict = {}
@@ -144,10 +138,10 @@ class WebkitDebugger(object):
             self.on_recv_notify_msg(result['method'], result['params'])
             
     def on_error(self, ws, error):
-        print error
+        print(error)
      
     def on_close(self, ws):
-        print "### closed ###"
+        print("### closed ###")
     
     # ===========================================================
     
@@ -204,7 +198,7 @@ class WebkitDebugger(object):
         '''
         self._ws.run_forever()
     
-    def _wait_for_response(self, seq, timeout=10, interval=0.1):
+    def _wait_for_response(self, seq, timeout=600, interval=0.1):
         '''等待返回数据
         '''
         time0 = time.time()
@@ -281,6 +275,7 @@ class WebkitDebugger(object):
     def screenshot(self):
         '''通过Chrome开发者协议获取page页面截图，
         '''
+        import base64
         logging.debug('[ChromeDriver][captureScreenshot]')
         params = {'format': 'png'}
         result = self.send_request('Page.bringToFront')
@@ -288,23 +283,9 @@ class WebkitDebugger(object):
         image = result['data']
         image = base64.b64decode(image)
         from PIL import Image
-        picture = Image.open(StringIO.StringIO(image))
+        picture = Image.open(six.BytesIO(image))
         logging.debug('[ChromeDriver][Retn] %s' % result)
         return picture
         
 if __name__ == '__main__':
-    import time
-    driver = ChromeDriver(9222)
-    debugger = driver.get_debugger('')
-    print debugger
-    # print debugger.send_request('Page.enable')
-    # print driver.get_page_list()
-    # print debugger.send_request('Page.getResourceTree')
-    # debugger.enable_runtime()
-#     debugger.get_frame_tree()
-#     # debugger._ws.send('{\"id\":%d,\"method\":\"Page.enable\"}' % 1)
-#     script = 'location.href'
-#     script = 'window'
-#     print debugger.eval_script('48080.2', script)
-    # time.sleep(10)
-    
+    pass

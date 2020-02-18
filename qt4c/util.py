@@ -1,21 +1,15 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 '''
 其他共用类模块
 '''
 
+from __future__ import division
 import time
 import win32con
 import ctypes
@@ -25,14 +19,19 @@ import win32gui
 import win32event
 import win32process
 import win32service
-import wintypes
+import winerror
 import pywintypes
+import six
 from PIL import ImageGrab
 from win32con import DESKTOP_SWITCHDESKTOP
  
 from testbase.util import Timeout
 from qt4c.exceptions import TimeoutError
 from qt4c.keyboard import Keyboard
+from qt4c import wintypes
+
+if six.PY3:
+    unicode = str
 
 
 _DEFAULT_BUFFER_SIZE = 255
@@ -42,8 +41,8 @@ SIZEOF = lambda datatype: ctypes.sizeof(datatype)
 class Point(object):
     """坐标点类
     """
-    def __init__(self, (x,y)):
-        self._pt = (x,y)
+    def __init__(self, x_y):
+        self._pt = (x_y[0], x_y[1])
         
     @property
     def X(self):
@@ -67,8 +66,8 @@ class Point(object):
 class Rectangle(object):
     """矩形区域类
     """
-    def __init__(self, (left, top, right, bottom)):
-        self._rect = (left, top, right, bottom)
+    def __init__(self, left_top_right_bottom):
+        self._rect = (left_top_right_bottom[0], left_top_right_bottom[1], left_top_right_bottom[2], left_top_right_bottom[3])
 #        if isinstance(self._rect, )
     
     def __str__(self):
@@ -84,7 +83,7 @@ class Rectangle(object):
         
     @property
     def Center(self):
-        return Point(((self._rect[0]+self._rect[2])/2, (self._rect[1]+self._rect[3])/2))
+        return Point(((self._rect[0] + self._rect[2]) // 2, (self._rect[1] + self._rect[3]) // 2))
     
     @property
     def Left(self):
@@ -193,7 +192,7 @@ class ProcessMem(object):
         :param buffer_size: The number of bytes to be written to the specified process 
         """
         rst = ctypes.windll.kernel32.WriteProcessMemory(self._hProcess, self._buffer, local_buffer, buffer_size, None)
-        if rst==0:
+        if rst == 0:
             raise RuntimeError("Fail to write to remote process memory")
 
     def read(self, local_buffer, buffer_size):
@@ -205,7 +204,7 @@ class ProcessMem(object):
         :param buffer_size: The number of bytes to be read from the specified process 
         """
         rst = ctypes.windll.kernel32.ReadProcessMemory(self._hProcess, self._buffer, local_buffer, buffer_size, None)
-        if rst ==0:
+        if rst == 0:
             raise RuntimeError('Fail to read from remote process memory')
     
 #===============================================================================
@@ -217,10 +216,10 @@ def getEncoding(s):
     :rtype: string
     :return: 'GBK','UNICODE','UTF-8','UNKNOWN'
     '''
-    if not isinstance(s, basestring):
+    if not isinstance(s, six.string_types):
         return 'UNKNOWN'
     
-    if isinstance(s,types.UnicodeType):
+    if isinstance(s, six.text_type):
         return 'UNICODE'
     
     try:
@@ -255,7 +254,7 @@ def myEncode(s, ec='unicode', sc=None):
     :attention: sc默认值为None，此时函数会自动判断s的编码（有一定概率会判断错误）
     :return: 转换后的字符串
     '''
-    if not isinstance(s, basestring):
+    if not isinstance(s, six.string_types):
         return s
     if not sc:
         sc = getEncoding(s)
@@ -329,14 +328,14 @@ class MsgSyncer(object):
         try:
             self._pid = wndobj.ProcessId
         except win32gui.error as e:
-            if e[0] == 1400: #invalid hwnd
+            if e.winerror == winerror.ERROR_INVALID_WINDOW_HANDLE: #invalid hwnd
                 return
             else:
                 raise e
         if self._pid == 0: #窗口消失，获取pid为0
             return
         
-        if MsgSyncer.pid_event_map.has_key(self._pid):
+        if self._pid in MsgSyncer.pid_event_map:
             self._syncwnd, self._eventobj = MsgSyncer.pid_event_map[self._pid]
         else:
             qp = qpath.QPath("/classname='AssistWnd' && processid='%d'" % self._pid)
@@ -360,8 +359,8 @@ class MsgSyncer(object):
         
         try:
             win32gui.PostMessage(self._syncwnd, win32con.WM_TIMER, 0, 0)
-        except pywintypes.error, e:
-            if e[0] == 1400:
+        except pywintypes.error as e:
+            if e.winerror == winerror.ERROR_INVALID_WINDOW_HANDLE:
                 return
             raise e
         
@@ -403,9 +402,9 @@ def remote_inject_dll(process_id, dll_path):
     ctypes.windll.kernel32.CloseHandle(hproc)
 
 class Process(object):
-    '''提供系统进程的操作类
-    
-           使用例子：
+    '''
+    提供系统进程的操作类
+    使用例子：
     for proc in Process.GetProcessesByName('iexplore.exe'):
         print proc.ProcessId
     '''
@@ -421,6 +420,8 @@ class Process(object):
     def GetProcessesByName(process_name):
         '''返回进程名为process_name的Process类实例列表
         '''
+        if six.PY3:
+            process_name = process_name.encode('utf8')
         processes = []
         
         TH32CS_SNAPPROCESS = 0x00000002
@@ -443,6 +444,7 @@ class Process(object):
     
     @property
     def ProcessName(self):
+        # 64位python下有问题
         '''返回进程名字。失败返回None
         '''
         TH32CS_SNAPPROCESS = 0x00000002
@@ -456,6 +458,8 @@ class Process(object):
         while 1:
             if pe.th32ProcessID == self._pid:
                 win32api.CloseHandle(hSnapshot)
+                if six.PY3:
+                    return pe.szExeFile.decode('utf-8')
                 return pe.szExeFile
             
             if not ctypes.windll.kernel32.Process32Next(hSnapshot, ctypes.byref(pe)):
@@ -535,12 +539,12 @@ def is_system_locked():
 
     try:
         UserDll=ctypes.WinDLL("User32.dll")
-        hDesk=UserDll.OpenDesktopW(u"Default",0,False,DESKTOP_SWITCHDESKTOP)
+        hDesk=UserDll.OpenDesktopW(u"Default", 0, False, DESKTOP_SWITCHDESKTOP)
 #         PyhDesk=win32service.OpenDesktop("Default",0,FALSE,DESKTOP_SWITCHDESKTOP)
-        bUnlocked=UserDll.SwitchDesktop(hDesk);
+        bUnlocked = UserDll.SwitchDesktop(hDesk)
         UserDll.CloseDesktop(hDesk)
     except win32service.error as e:
-        print str(e)
+        print(str(e))
         bUnlocked=False
     
     return (not bUnlocked)
@@ -600,6 +604,17 @@ class MetisView(object):
     def long_click(self, offset_x=None, offset_y=None):
         pass
 
+def getDpi(hwnd=None):
+    if not hwnd:
+        hwnd = win32gui.GetDesktopWindow()
+    ratio = 1.0
+    try:
+        # win10 1607版本以上
+        dpi = ctypes.windll.user32.GetDpiForWindow(hwnd)
+        ratio = dpi / 96.0
+    except:
+        pass
+    return ratio
+
 if __name__ == '__main__':
     pass
-    

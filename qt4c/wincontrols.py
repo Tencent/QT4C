@@ -1,42 +1,35 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 '''
 Window的控件模块
 '''
 
+from __future__ import division
 import locale
 import win32api
 import win32gui
 import win32process
 import win32con
+import winerror
 import commctrl
 import copy
 import ctypes
 import os
 import time
-import control
 import types
-import util
-import wintypes
+import six
 
 from testbase.util import LazyInit, Timeout
 
 from qt4c.util import ProcessMem, Rectangle
 from qt4c.mouse import Mouse, MouseFlag, MouseClickType
 from qt4c.exceptions import ControlAmbiguousError, ControlNotFoundError, TimeoutError
-from qt4c import accessible
+from qt4c import accessible, control, wintypes, util
 from qt4c.keyboard import Keyboard
 
 class _CWindow(object):
@@ -76,8 +69,7 @@ class Control(control.Control):
         
         control.Control.__init__(self)
         if locator is None:
-            if (isinstance(root, int) or 
-                isinstance(root, long) or 
+            if (isinstance(root, six.integer_types) or 
                 isinstance(root, Control) or 
                 isinstance(root, _CWindow) or
                 root is None):
@@ -94,7 +86,7 @@ class Control(control.Control):
         if self._locator is None and self._root is None:
             wndobj =  _CWindow(int(win32gui.GetDesktopWindow()))
         elif self._locator is None:
-            if isinstance(self._root, int) or isinstance(self._root, long): #root is a hwnd
+            if isinstance(self._root, six.integer_types): #root is a hwnd
                 wndobj = _CWindow(self._root)
             elif isinstance(self._root, Control):
                 wndobj = _CWindow(self._root.HWnd)
@@ -102,12 +94,12 @@ class Control(control.Control):
                 wndobj = self._root
         else:
             try:
-                kwargs = {'root':self._root}
+                kwargs = {'root': self._root}
                 foundctrls =  self._timeout.retry(self._locator.search, kwargs, (), lambda x: len(x)>0 )
-            except TimeoutError, erro:
+            except TimeoutError as erro:
                 raise ControlNotFoundError("<%s>中的%s查找超时：%s" % (self._locator, self._locator.getErrorPath(), erro))
             nctrl = len(foundctrls)
-            if (nctrl>1):
+            if (nctrl > 1):
                 raise ControlAmbiguousError("<%s>找到%d个控件" % (self._locator, nctrl))
             wndobj = _CWindow(foundctrls[0].HWnd)
         return wndobj
@@ -141,7 +133,7 @@ class Control(control.Control):
         if self._locator is None and self._root is None:
             return True
         elif self._locator is None:
-            if isinstance(self._root, int) or isinstance(self._root, long): #root is a hwnd
+            if isinstance(self._root, six.integer_types): #root is a hwnd
                 return True
             elif isinstance(self._root, Control):
                 return self._root.exist()
@@ -153,9 +145,9 @@ class Control(control.Control):
                     return False
             foundctrls = self._locator.search(root=self._root)
             nctrl = len(foundctrls)
-            if (nctrl>1):
+            if (nctrl > 1):
                 raise ControlAmbiguousError("<%s>找到%d个控件" % (self._locator, nctrl))
-            if (nctrl<1):
+            if (nctrl < 1):
                 return False
             else:
                 return True    
@@ -199,23 +191,27 @@ class Control(control.Control):
         buf_size = 0
         try:
             textlength = ctypes.c_long(0)
-            hr = ctypes.windll.user32.SendMessageTimeoutA(self.HWnd, win32con.WM_GETTEXTLENGTH, 0, 0, 0, 200,ctypes.byref(textlength))
+            hr = ctypes.windll.user32.SendMessageTimeoutA(self.HWnd, win32con.WM_GETTEXTLENGTH, 0, 0, 0, 200, ctypes.byref(textlength))
             if hr == 0 or textlength.value < 0:
                 return ""
             buf_size = textlength.value + 1
         except win32gui.error:
             return ""
-        
+
         if buf_size <= 0:
             return ""
-        pybuffer = win32gui.PyMakeBuffer(buf_size)
-        ret = win32gui.SendMessage(self.HWnd, win32con.WM_GETTEXT, buf_size, pybuffer)
+        # pybuffer = win32gui.PyMakeBuffer(buf_size)
+        # ret = win32gui.SendMessage(self.HWnd, win32con.WM_GETTEXT, buf_size, pybuffer)
+
+        pybuffer = ctypes.create_unicode_buffer(buf_size)
+        ret = ctypes.windll.user32.SendMessageW(self.HWnd, win32con.WM_GETTEXT, buf_size, ctypes.byref(pybuffer))
         if ret:
-            text = pybuffer[:buf_size-1]
-            os_encoding = locale.getdefaultlocale(None)[1]
+            text = pybuffer.value
             try:
-                return text.decode(os_encoding).encode('utf-8')
-            except UnicodeDecodeError:
+                if six.PY2:
+                    text = text.encode('utf8')
+                return text
+            except Exception:
                 return text
         else:
             return ""
@@ -234,8 +230,9 @@ class Control(control.Control):
             hwnds.append(self.HWnd)
             try:
                 win32gui.EnumChildWindows(self.HWnd, self.__enum_childwin_callback, hwnds)
-            except win32gui.error, e:
-                if e[0]== 0 or e[0]==1400: #1400是无效窗口错误
+            except win32gui.error as e:
+                # if e[0]== 0 or e[0]==1400: #1400是无效窗口错误
+                if e.winerror == 0 or e.winerror == winerror.ERROR_INVALID_WINDOW_HANDLE: #1400是无效窗口错误
                     pass
                 else:
                     raise e
@@ -250,7 +247,9 @@ class Control(control.Control):
         text = win32gui.GetClassName(self.HWnd)
         os_encoding = locale.getdefaultlocale(None)[1]
         try:
-            return text.decode(os_encoding)
+            if six.PY2:
+                text = text.decode(os_encoding)
+            return text
         except UnicodeDecodeError:
             return text
     
@@ -278,6 +277,10 @@ class Control(control.Control):
         
     @property
     def HWnd(self):
+        return self.hwnd
+
+    @property
+    def hwnd(self):
         return self._wndobj.HWnd
     
     @property        
@@ -322,7 +325,10 @@ class Control(control.Control):
         :param text: 设置的文本 
         """
         os_encoding = locale.getdefaultlocale(None)[1]
-        win32gui.SendMessage(self.HWnd, win32con.WM_SETTEXT, 0, text.decode('utf8').encode(os_encoding))
+        if six.PY2:
+            win32gui.SendMessage(self.HWnd, win32con.WM_SETTEXT, 0, text.decode('utf8').encode(os_encoding))
+        else:
+            win32gui.SendMessage(self.HWnd, win32con.WM_SETTEXT, 0, text)
         
     @property
     def ThreadId(self):
@@ -406,7 +412,6 @@ class Control(control.Control):
                                                               如果为负值，代表距离控件区域右上角的y轴上的绝对值偏移；
         '''
         x, y = self._getClickXY(xOffset, yOffset)
-        
         Mouse.sendClick(self.HWnd, x,y, mouseFlag, clickType)
         
     def setFocus(self):
@@ -469,7 +474,7 @@ class ListViewItem(control.Control):
             lvi = wintypes.LVITEM64()
         else:
             lvi = wintypes.LVITEM()
-        pTextBuf = ctypes.c_char_p('\0' * win32con.MAX_PATH)
+        pTextBuf = ctypes.c_char_p(six.b('\0') * win32con.MAX_PATH)
     
         plvi = ctypes.windll.kernel32.VirtualAllocEx(hProcess, None, ctypes.sizeof(wintypes.LVITEM), win32con.MEM_COMMIT, win32con.PAGE_READWRITE)  # @UndefinedVariable
         pBuf = ctypes.windll.kernel32.VirtualAllocEx(hProcess, None, win32con.MAX_PATH, win32con.MEM_COMMIT, win32con.PAGE_READWRITE) # @UndefinedVariable
@@ -510,7 +515,9 @@ class ListView(Control):
             if key >= cnt:
                 raise IndexError("key超出下标范围!")
             return ListViewItem(self, key)
-        elif isinstance(key, basestring):
+        elif isinstance(key, six.string_types):
+            if(isinstance(key, six.text_type)):
+                key = key.encode('utf8')
             for item in self:
                 if item.Text == key:
                     return item
@@ -799,8 +806,12 @@ class TrayNotifyBar(Control):
     """系统的通知区域
     """
     def __init__(self):
-        import qpath
-        qp = qpath.QPath("/ClassName='Shell_TrayWnd'/ClassName='TrayNotifyWnd'/ClassName='ToolbarWindow32' && MaxDepth='5' && Instance='0'")
+        from qt4c import qpath
+        import platform
+        if platform.release() == 'XP':
+            qp = qpath.QPath("/ClassName='Shell_TrayWnd'/ClassName='TrayNotifyWnd'/ClassName='ToolbarWindow32' && MaxDepth='5' && Instance='0'")
+        else:
+            qp = qpath.QPath("/ClassName='Shell_TrayWnd'/ClassName='TrayNotifyWnd'/ClassName='SysPager'/ClassName='ToolbarWindow32' && MaxDepth='5'")
         Control.__init__(self, locator=qp)
     
     @property
@@ -833,8 +844,8 @@ class TrayNotifyBar(Control):
         width = self.BoundingRect.Width
         height = self.BoundingRect.Height
         hwnd = self.HWnd
-        row = height / 16
-        col = width / 16
+        row = height // 16
+        col = width // 16
         itemCnt = row * col
         for _ in range(itemCnt):
             l,t,r,b = self.BoundingRect.All
@@ -845,7 +856,7 @@ class TrayNotifyBar(Control):
             time.sleep(0.05)
     
     def __getitem__(self, key):
-        if isinstance(key, basestring):
+        if isinstance(key, six.string_types):
             return None
         else:
             for icon in self.Items:
@@ -854,10 +865,10 @@ class TrayNotifyBar(Control):
             return None
     
 class TrayTaskBar(Control):
-    """系统的任务栏区域（注意：Win7下，此类不可用)
+    """系统的任务栏区域(win7以上不可用)
     """
     def __init__(self):
-        import qpath
+        from qt4c import qpath
         qp = qpath.QPath("/ClassName='Shell_TrayWnd'/ClassName='ReBarWindow32'/Text='运行应用程序' && ClassName='ToolbarWindow32' && MaxDepth='2'")
         Control.__init__(self, locator=qp)
     
@@ -885,7 +896,7 @@ class TrayTaskBar(Control):
         return items
     
     def __getitem__(self, key):
-        if isinstance(key, basestring):
+        if isinstance(key, six.string_types):
             for icon in self.Items:
                 if icon.Tips == key:
                     return icon
@@ -952,10 +963,11 @@ class _TrayIcon(control.Control):
         """图标提示
         """
         pm = util.ProcessMem(self._notifybar.ProcessId, remote_buffer=self._tb.iString)
-        tips = ctypes.c_wchar_p('\0' * win32con.MAX_PATH)
+        # tips = ctypes.c_wchar_p('\0' * win32con.MAX_PATH)
+        tips = ctypes.create_unicode_buffer(win32con.MAX_PATH)
         pm.read(tips, win32con.MAX_PATH)
         from qt4c.util import myEncode
-        if isinstance(tips.value, types.UnicodeType):
+        if isinstance(tips.value, six.text_type):
             return myEncode(tips.value, 'utf-8', 'UNICODE')
         else:
             return myEncode(tips.value, 'utf-8', 'GBK')
@@ -1030,7 +1042,7 @@ class ComboBox(Control):
         hComboLBoxWnd = win32gui.FindWindow('ComboLBox',None)
         ctrlId = win32gui.GetDlgCtrlID(hComboLBoxWnd)
         
-        if type(_item) == types.IntType or type(_item) == types.LongType:
+        if isinstance(_item, six.integer_types):
             if((itemCount == win32con.CB_ERR) or
                             (_item >= itemCount) or (_item < -1)):
                 raise IndexError("%d超出索引！" % _item)#Exception('Item is disability')
@@ -1040,12 +1052,22 @@ class ComboBox(Control):
             item = _item
             itemList = []
             for i in range(itemCount):
-                pBuf = win32gui.PyMakeBuffer(win32con.MAX_PATH)
-                nchars = win32gui.SendMessage(self.HWnd, win32con.CB_GETLBTEXT, i, pBuf)
-                str_val = pBuf[:nchars]
-                itemList.append(str_val.decode('gbk').encode('utf8'))
+                # pBuf = win32gui.PyMakeBuffer(win32con.MAX_PATH)
+                # nchars = win32gui.SendMessage(self.HWnd, win32con.CB_GETLBTEXT, i, pBuf)
+                # str_val = pBuf[:nchars]
+                # itemList.append(str_val.decode('gbk').encode('utf8'))
+
+                pBuf = ctypes.create_unicode_buffer(win32con.MAX_PATH)
+                nchars = ctypes.windll.user32.SendMessageW(self.HWnd, win32con.CB_GETLBTEXT, i, ctypes.byref(pBuf))
+                if nchars:
+                    str_val = pBuf.value
+                    if six.PY2:
+                        str_val = str_val.encode('utf8')
+                    itemList.append(str_val)
+                else:
+                    raise ValueError("未找到%s" % item) # Exception('Item is disability')
             if item not in itemList:
-                raise ValueError("未找到%s" % item)#Exception('Item is disability')            
+                raise ValueError("未找到%s" % item) # Exception('Item is disability')            
             win32gui.SendMessage(self.HWnd, win32con.CB_SETCURSEL, itemList.index(item), 0)
             win32gui.PostMessage(self.HWnd, win32con.WM_COMMAND, (win32con.CBN_SELCHANGE << 16) | ctrlId, hComboLBoxWnd)
 
@@ -1053,9 +1075,17 @@ class ComboBox(Control):
         if idx < 0 or idx > self.Count - 1:
             return None
         
-        pBuf = win32gui.PyMakeBuffer(win32con.MAX_PATH)
-        nchars = win32gui.SendMessage(self.HWnd, win32con.CB_GETLBTEXT, idx, pBuf)
-        str_val = pBuf[:nchars]
+        # pBuf = win32gui.PyMakeBuffer(win32con.MAX_PATH)
+        # nchars = win32gui.SendMessage(self.HWnd, win32con.CB_GETLBTEXT, idx, pBuf)
+        # str_val = pBuf[:nchars]
+        pBuf = ctypes.create_unicode_buffer(win32con.MAX_PATH)
+        nchars = ctypes.windll.user32.SendMessageW(self.HWnd, win32con.CB_GETLBTEXT, idx, ctypes.byref(pBuf))
+        if nchars:
+            str_val = pBuf.value
+            if six.PY2:
+                str_val = str_val.encode('utf8')
+        else:
+            raise ValueError('获取文本失败')
         return str_val
         
     def getFullPath(self):
@@ -1136,6 +1166,12 @@ class TreeViewItem(control.Control):
     def HWnd(self):
         '''窗口句柄
         '''
+        return self.hwnd
+
+    @property
+    def hwnd(self):
+        '''窗口句柄
+        '''
         return self._hwnd
     
     def ensureVisible(self):
@@ -1179,8 +1215,8 @@ class TreeViewItem(control.Control):
     @property
     def Text(self):
         pmbuf = ProcessMem(processId=self._pid, buffer_size=win32con.MAX_PATH)
-        pmbuf.write(ctypes.c_char_p('\0' * win32con.MAX_PATH), win32con.MAX_PATH)                       
-        ptext = ctypes.c_char_p('\0' * win32con.MAX_PATH)
+        pmbuf.write(ctypes.c_char_p(six.b('\0') * win32con.MAX_PATH), win32con.MAX_PATH)                       
+        ptext = ctypes.c_char_p(six.b('\0') * win32con.MAX_PATH)
         tvi = wintypes.TVITEM()
         tvi.mask = commctrl.TVIF_TEXT
         tvi.pszText = pmbuf.Buffer
@@ -1190,7 +1226,7 @@ class TreeViewItem(control.Control):
         pmtvi = ProcessMem(processId=self._pid, buffer_size=tvisize)        
         pmtvi.write(ctypes.byref(tvi), tvisize)        
         win32gui.SendMessage(self.HWnd, commctrl.TVM_GETITEM, 0, pmtvi.Buffer)
-        pmbuf.read(ptext, win32con.MAX_PATH)        
+        pmbuf.read(ptext, win32con.MAX_PATH)    
         return util.myEncode(ptext.value, 'utf-8', 'gbk') 
     
     @property
@@ -1206,7 +1242,9 @@ class _ITEMLIST(list):
                 raise IndexError("key(%d)已超出下标范围!" % key)
             else:
                 return list.__getitem__(self, key)
-        elif isinstance(key, basestring):
+        elif isinstance(key, six.string_types):
+            if(isinstance(key, six.text_type)):
+                key = key.encode('utf8')
             for item in self:
                 if item.Text == key:
                     return item
@@ -1254,7 +1292,7 @@ class MenuItem(Control):
         """可见文本
         """
         if not self.IsSeperator and self.State == MenuItem.EnumMenuItemState.NORMAL:
-            pText = ctypes.c_char_p('\0' * win32con.MAX_PATH)
+            pText = ctypes.c_char_p(six.b('\0') * win32con.MAX_PATH)
             ctypes.windll.user32.GetMenuStringA(self.hMenu, 
                                                 self.idx, 
                                                 pText, 
@@ -1263,6 +1301,8 @@ class MenuItem(Control):
             text = pText.value
             os_encoding = locale.getdefaultlocale(None)[1]
             try:
+                if six.PY3:
+                    return text.decode(os_encoding)
                 return text.decode(os_encoding).encode('utf-8')
             except UnicodeDecodeError:
                 return text
@@ -1332,24 +1372,9 @@ class MenuItem(Control):
                                                                默认值为None，代表控件区域y轴上的中点；
                                                               如果为负值，代表距离控件区域右上角的y轴上的绝对值偏移；
         """
-        # (l, t, r, b) = self.BoundingRect.All
-        # if xOffset is None:
-        #     x = (l+r)/2
-        # else:
-        #     if xOffset < 0:
-        #         x = r + xOffset
-        #     else:
-        #         x = l + xOffset
-        # if yOffset is None:
-        #     y = (t+b)/2
-        # else:
-        #     if yOffset < 0:
-        #         y = b + yOffset
-        #     else:
-        #         y = t + yOffset
         x, y = self._getClickXY(xOffset, yOffset)
         Mouse.click(x,y, mouseFlag, clickType)
-#        Mouse.sendClick(self.menu.HWnd, x,y, mouseFlag, clickType)
+        # Mouse.sendClick(self.menu.HWnd, x,y, mouseFlag, clickType)
             
 class Menu(Window):
     '''
@@ -1418,11 +1443,11 @@ class Menu(Window):
         self._timeout.retry(self._getSubMenuItemsCount, (), (), lambda x: x > 0)
         
         cnt = self._getSubMenuItemsCount()
-        if isinstance(key, int) or isinstance(key, long):
+        if isinstance(key, six.integer_types):
             if key >= cnt:
                 raise IndexError("key(%d)超出下标范围!" % key)
             return MenuItem(self, key)
-        if isinstance(key, basestring):
+        if isinstance(key, six.string_types):
             for i in range(cnt):
                 mi = MenuItem(self, i)
                 if mi.Text == key:
@@ -1439,4 +1464,3 @@ class Menu(Window):
 
 if __name__ == '__main__':
     pass
-    

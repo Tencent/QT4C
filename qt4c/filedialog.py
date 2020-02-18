@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 
 '''文件窗口模块
@@ -19,6 +12,7 @@
 from qt4c.qpath import QPath
 from qt4c.control import ControlContainer
 import qt4c.wincontrols as win
+import six
 
 class FileDialog(win.Window, ControlContainer):
     '''文件窗口基类
@@ -55,7 +49,9 @@ class FileDialog(win.Window, ControlContainer):
         else:
             buff = ctypes.create_unicode_buffer(rdsize)
             pm.read(buff, ctypes.sizeof(buff))
-            return buff.value.encode('utf8')
+            if six.PY2:
+                return buff.value.encode('utf8')
+            return buff.value
         
 class OpenFileDialog(FileDialog):
     '''打开文件窗口
@@ -99,9 +95,8 @@ class SelectFileDialog(FileDialog):
         self.updateLocator(locators)
     
     def open(self,filename):
-        
         self.bringForeground()
-        self.Controls['文件名编辑框'].Text=filename
+        self.Controls['文件名编辑框'].Text = filename
         self.Controls['发送按钮'].click()
         self.waitForInvalid(timeout=30)
         
@@ -131,8 +126,12 @@ class SaveAsDialog(FileDialog):
         :type style: string
         '''
         self.bringForeground()
-        self.Controls['输入框'].Text=filepath
-        if style!=None:
+        import platform
+        if platform.release() == 'XP':
+            self.Controls['输入框'].Text = filepath
+        else:
+            self.Controls['win7输入框'].Text = filepath
+        if style != None:
             self.Controls['保存类型'].SelectedIndex = style
         self.Controls['保存按钮'].click()
         self.waitForInvalid()

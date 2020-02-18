@@ -1,22 +1,16 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 '''
 使用UIA方式去访问控件
 '''
 
 import time
+import six
 from comtypes.client import CreateObject, GetModule
 from ctypes import *
 
@@ -101,7 +95,7 @@ class Control(control.Control):
     def __init__(self,root=None,locator=None):
         '''构造函数        
         :type root: UIA.Control or None
-        :param root: 开始查找的GF控件或包含GF的win32control.Window；
+        :param root: 开始查找的UIA控件或包含UIA的win32control.Window；
         :type locator: str or qt4c.qpath.QPath(后面支持）
         :param locator: UIA控件的name属性  or qpath(后面支持）
         :attention: 参数root和locator不能同时为None
@@ -137,13 +131,13 @@ class Control(control.Control):
             elif isinstance(self._root, IUIAutomation.IUIAutomationElement):
                 elm = self._root
             else:
-                raise TypeError("root应为uiacontrols。Control类型或者UIA element，实际类型为：%s" %type(self._root))
+                raise TypeError("root应为uiacontrols.Control类型或者UIA element，实际类型为：%s" % type(self._root))
         else:                        
-            if isinstance(self._locator, basestring):
+            if isinstance(self._locator, six.string_types):
                 if isinstance(self._root, Control):
                     args = (self._root,self._locator)
                     try:
-                        from qpath import _find_by_name
+                        from qt4c.qpath import _find_by_name
                         foundctrl = self._timeout.retry(_find_by_name, args, (ControlNotFoundError))
                         foundctrl.empty_invoke()
                         elm = foundctrl._uiaobj
@@ -155,7 +149,7 @@ class Control(control.Control):
                 try:
                     kwargs = {'root':self._root}
                     foundctrls =  self._timeout.retry(self._locator.search, kwargs, (), lambda x: len(x)>0)
-                except TimeoutError,erro:
+                except TimeoutError as erro:
                     raise ControlNotFoundError("<%s>中的%s查找超时：%s" % (self._root,self._locator.getErrorPath(),erro))
                 nctrl = len(foundctrls)
                 if(nctrl>1):
@@ -301,8 +295,8 @@ class Control(control.Control):
         """
         try:
             self._init_uiaobj()
-        except Exception,e:
-            print "判断UIA控件存在失败,UIA elm实例化异常:%s" %e
+        except Exception as e:
+            print("判断UIA控件存在失败,UIA elm实例化异常:%s" %e)
             return False
         return True
     
@@ -315,6 +309,16 @@ class Control(control.Control):
     def Hwnd(self):
         """返回控件句柄
         """
+        return self.hwnd
+
+    @property
+    def HWnd(self):
+        """兼容其他类型控件
+        """
+        return self.hwnd
+
+    @property
+    def hwnd(self):
         return self._uiaobj.CurrentNativeWindowHandle
     
     @property
@@ -333,7 +337,7 @@ class Control(control.Control):
         
         
             
-class UIAWindows(Control,control.ControlContainer):
+class UIAWindows(Control, control.ControlContainer):
     '''UIA控件窗体定义
     '''
     def __init__(self,root=None, locator=None):
@@ -397,12 +401,38 @@ class ComboBox(Control):
         Keyboard.inputKeys(keys)
         Keyboard.inputKeys(data)
 
+    def expand(self):
+        pattern = self._uiaobj.GetCurrentPattern(IUIAutomation.UIA_ExpandCollapsePatternId)
+        dllpoint = cast(pattern, POINTER(IUIAutomation.IUIAutomationExpandCollapsePattern))
+        ret = dllpoint.Expand() == 0
+        return ret
+
+    def collapse(self):
+        pattern = self._uiaobj.GetCurrentPattern(IUIAutomation.UIA_ExpandCollapsePatternId)
+        dllpoint = cast(pattern, POINTER(IUIAutomation.IUIAutomationExpandCollapsePattern))
+        ret = dllpoint.Collapse() == 0
+        return ret
+
+    @property
+    def Value(self):
+        return self._uiaobj.GetCurrentPropertyValue(IUIAutomation.UIA_LegacyIAccessibleValuePropertyId)
+
+    @Value.setter
+    def Value(self, _item):
+        """对Combobox类型控件设置value值
+        :type keys: utf-8 str or unicode
+        :param keys: 被设置选项的值
+        """
+        pattern = self._uiaobj.GetCurrentPattern(IUIAutomation.UIA_ValuePatternId)
+        dllpoint = cast(pattern, POINTER(IUIAutomation.IUIAutomationValuePattern))
+        ret = dllpoint.SetValue(_item) == 0
+        return ret
+
 class RadioButton(Control):
     def is_select(self):
         pattern = self._uiaobj.GetCurrentPattern(IUIAutomation.UIA_SelectionItemPatternId)
         dllpoint = cast(pattern, POINTER(IUIAutomation.IUIAutomationSelectionItemPattern))
         return dllpoint.CurrentIsSelected
         
-        
-        
-        
+if __name__ == '__main__':
+    pass

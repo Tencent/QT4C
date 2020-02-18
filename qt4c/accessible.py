@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 """用于访问支持IAccessible接口的控件
 
@@ -21,6 +14,7 @@ import win32con
 import win32gui
 import ctypes
 import comtypes
+import six
 from comtypes.client import GetModule
 GetModule('oleacc.dll') 
 from comtypes.gen.Accessibility import IAccessible
@@ -142,9 +136,16 @@ class _AccessibleObjectWrapper_win32com(object):
         self._childID = win32con.CHILDID_SELF
 
     @property
+    def accChildCount(self):
+        count = self._acc_disp._oleobj_.InvokeTypes(-5001, 0, 2, (3, 0), ())
+        if isinstance(count, six.integer_types):
+            return count
+        return None
+
+    @property
     def accFocus(self):
         child = self._acc_disp._oleobj_.InvokeTypes(-5011, 0, 2, (12, 0), ())
-        if isinstance(child, int) or isinstance(child, long):
+        if isinstance(child, six.integer_types):
             return child
         elif isinstance(child, win32com.client.DispatchBaseClass):
             return _AccessibleObjectWrapper_win32com(child)
@@ -155,7 +156,19 @@ class _AccessibleObjectWrapper_win32com(object):
     def accName(self):
         name = self._acc_disp._oleobj_.InvokeTypes(-5003, 0, 2, (8, 0), ((12, 17),), self._childID)
         if name:
-            return name.encode('utf8')
+            if six.PY2:
+                return name.encode('utf8')
+            return name
+        return None
+
+    def get_accName(self, childID):
+        if not childID:
+            childID = self._childID
+        name = self._acc_disp._oleobj_.InvokeTypes(-5003, 0, 2, (8, 0), ((12, 17),), childID)
+        if name:
+            if six.PY2:
+                return name.encode('utf8')
+            return name
         return None
         
     @property
@@ -166,7 +179,9 @@ class _AccessibleObjectWrapper_win32com(object):
     def accDescription(self):
         desc = self._acc_disp._oleobj_.InvokeTypes(-5005, 0, 2, (8, 0), ((12, 17),), self._childID)
         if desc:
-            return desc.encode('utf8')
+            if six.PY2:
+                return desc.encode('utf8')
+            return desc
         return None
         
     @property
@@ -177,7 +192,9 @@ class _AccessibleObjectWrapper_win32com(object):
     def accValue(self):
         val = self._acc_disp._oleobj_.InvokeTypes(-5004, 0, 2, (8, 0), ((12, 17),), self._childID)
         if val:
-            return val.encode('utf8')
+            if six.PY2:
+                return val.encode('utf8')
+            return val
         return None
     
     @property
@@ -260,12 +277,18 @@ class _AccessibleObjectWrapper_comtypes(object):
             return accObj
         else:
             return accObj.accChild(varChild)
+
+    @property
+    def accChildCount(self):
+        count = self._acc_disp.accChildCount
+        if isinstance(count, six.integer_types):
+            return count
+        return None
         
     @property
     def accFocus(self):
         child = self._acc_disp.accFocus
-        
-        if isinstance(child, int) or isinstance(child, long):
+        if isinstance(child, six.integer_types):
             return child
         elif isinstance(child, IAccessible):
             return _AccessibleObjectWrapper_comtypes(child.QueryInterface(IAccessible))
@@ -277,10 +300,26 @@ class _AccessibleObjectWrapper_comtypes(object):
         try:
             name = self._acc_disp.accName(self._childID)
             if name:
-                return name.encode('utf8')
+                if six.PY2:
+                    return name.encode('utf8')
+                return name
             return None
         except comtypes.COMError:
             return None
+
+    def get_accName(self, childID):
+        if not childID:
+            childID = self._childID
+        try:
+            name = self._acc_disp.accName(childID)
+            if name:
+                if six.PY2:
+                    return name.encode('utf8')
+                return name
+            return None
+        except comtypes.COMError:
+            return None
+
         
     @property
     def accRole(self):
@@ -294,7 +333,9 @@ class _AccessibleObjectWrapper_comtypes(object):
         try:
             desc = self._acc_disp.accDescription(self._childID)
             if desc:
-                return desc.encode('utf8')
+                if six.PY2:
+                    return desc.encode('utf8')
+                return desc
             return None
         except comtypes.COMError:
             return None
@@ -308,7 +349,9 @@ class _AccessibleObjectWrapper_comtypes(object):
         try:
             val = self._acc_disp.accValue(self._childID)
             if val:
-                return val.encode('utf8')
+                if six.PY2:
+                    return val.encode('utf8')
+                return val
             return None
         except comtypes.COMError:
             return None
@@ -325,8 +368,7 @@ class AccessibleObject(object):
     
     """
     #===========================================================================
-    #从GF控件中获取出来的AccessibleObject是pyidispatch，是pythoncom中定义的对象类型，
-    #而win32控件和web控件的AccessibleObject都是使用了ctypes模块调用系统api函数得到的对象，
+    #win32控件和web控件的AccessibleObject都是使用了ctypes模块调用系统api函数得到的对象，
     #它的类型是ctypes.Struct。ctypes模块可以使用pythoncom(26).dll的导出函数PyObjectFromIUnknown
     #将IAccessible（ctypes.Struct类型）转换为PyIDispatch类型实例，但转换后的实例在调用IAccessible接口
     #方法时，在某些对象下（更多体现在web元素）时会抛出异常，而ctypes.Struct类型实例则正常调用。
@@ -376,7 +418,7 @@ class AccessibleObject(object):
                                              返回为None，代表未实现此接口。  
         """
         childFocus = self._acc_disp.accFocus
-        if isinstance(childFocus, int) or isinstance(childFocus, long):
+        if isinstance(childFocus, six.integer_types):
             return childFocus
         elif isinstance(childFocus, _AccessibleObjectWrapper_win32com) or\
              isinstance(childFocus, _AccessibleObjectWrapper_comtypes):
@@ -434,6 +476,14 @@ class AccessibleObject(object):
         if parent:
             return AccessibleObject(parent)
         return parent
+
+    @property
+    def accChildCount(self):
+        return self._acc_disp.accChildCount
+
+    def get_accName(self, childID=None):
+        return self._acc_disp.get_accName(childID)
+            
             
 if __name__ == '__main__':
     pass

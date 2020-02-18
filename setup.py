@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 
 import os
@@ -38,8 +31,8 @@ def parse_requirements():
         return reqs
 
 def get_description():
-    with open(os.path.join(BASE_DIR, "README.md"), "r") as fh:
-        return fh.read()
+    with open(os.path.join(BASE_DIR, "README.md"), "rb") as fh:
+        return fh.read().decode('utf8')
 
 
 if __name__ == "__main__":
@@ -49,7 +42,7 @@ if __name__ == "__main__":
       packages=find_packages(exclude=("tests", "tests.*",)),
       include_package_data=True,
       package_data={'':['*.txt', '*.TXT'], },
-      data_files=[(".", ["requirements.txt", "version.txt"])],
+      data_files=[(".", ["requirements.txt"])],
       description = "QTA test driver for Win32 application",
       long_description=get_description(),
       long_description_content_type="text/markdown",
@@ -57,6 +50,7 @@ if __name__ == "__main__":
       license="Copyright(c)2010-2018 Tencent All Rights Reserved. ",
       install_requires=parse_requirements(),
       classifiers=[
+        "Development Status :: 3 - Alpha",
         "Programming Language :: Python :: 2.7",
         "Operating System :: Microsoft :: Windows",
       ],

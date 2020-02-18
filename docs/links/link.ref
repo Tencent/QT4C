@@ -1,0 +1,26 @@
+.. _qtaf-setup: https://qta-testbase.readthedocs.io/zh/latest/setup.html
+.. |qtaf-setup| replace:: Testbase使用前准备
+
+.. _qtaf-project: https://qta-testbase.readthedocs.io/zh/latest/api/project.html
+.. |qtaf-project| replace:: Testbase创建和修改测试项目
+
+.. _qtaf-testcase: https://qta-testbase.readthedocs.io/zh/latest/api/testcase.html
+.. |qtaf-testcase| replace:: TestCase
+
+.. _qtaf-qpath: https://qta-tuia.readthedocs.io/zh/latest/qpath.html
+.. |qtaf-qpath| replace:: QPath语法和使用
+
+.. _qt4w-homepage: https://qt4w.readthedocs.io/zh_CN/latest/usage/WebPage.html
+.. |qt4w-homepage| replace:: QT4W使用文档
+
+.. _qt4w-webelement: https://qt4w.readthedocs.io/zh_CN/latest/usage/WebElement.html
+.. |qt4w-webelement| replace:: Web控件标识
+
+.. _qt4w-usage: https://qt4w.readthedocs.io/zh_CN/latest/usage.html
+.. |qt4w-usage| replace:: Web控件的标识与使用
+
+.. _qt4w-usebrowser: https://qt4w.readthedocs.io/zh_CN/latest/usebrowser.html
+.. |qt4w-usebrowser| replace:: 跨端跨平台测试
+
+.. _inspect-usage: https://docs.microsoft.com/en-us/windows/desktop/winauto/inspect-objects#using-inspect
+.. |inspect-usage| replace:: Inspect.exe介绍

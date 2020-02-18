@@ -1,16 +1,9 @@
 # -*- coding: UTF-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 
 '''PC端WebView基类
@@ -68,18 +61,14 @@ class WebViewBase(IWebView):
             raise JavaScriptError(frame_xpaths, result[1:])
         else:
             raise ValueError('执行JavaScript返回结果错误：%r' % result)
-
+    
     def _handle_offset(self, x_offset, y_offset):
         '''win10上如果设置了DPI需要进行坐标修正
         '''
-        winver = sys.getwindowsversion()
-        ratio = 1.0
-        if int(winver[0]) == 6 and int(winver[1]) == 2 and int(winver[2]) >= 9200:
-            # win10
-            dpi = ctypes.windll.user32.GetDpiForWindow(self._window.HWnd)
-            ratio = dpi / 96.0
+        from qt4c import util
+        ratio = util.getDpi(self._window.HWnd)
         return x_offset / ratio, y_offset / ratio
-    
+
     def _inner_click(self, flag, click_type, x_offset, y_offset,):
         self.activate()
         x_offset, y_offset = self._handle_offset(x_offset, y_offset)
@@ -89,7 +78,7 @@ class WebViewBase(IWebView):
             new_y += self._window.BoundingRect.Top - self._offscreen_win.BoundingRect.Top
         Mouse.click(new_x, new_y, flag, click_type)
         
-    def click(self, x_offset, y_offset):        
+    def click(self, x_offset, y_offset):  
         self._inner_click(MouseFlag.LeftButton, MouseClickType.SingleClick, x_offset, y_offset)
         
     def double_click(self, x_offset, y_offset):
@@ -137,7 +126,10 @@ class WebViewBase(IWebView):
         '''
         self.activate()
         from PIL import ImageGrab
-        img = ImageGrab.grab(self.rect)
+        from qt4c import util
+        ratio = util.getDpi(self._window.HWnd)
+        rect = tuple(map(lambda x: x * ratio, self.rect))
+        img = ImageGrab.grab(rect)
         return img
     
     def upload_file(self, file_path):

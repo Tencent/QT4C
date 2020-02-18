@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 
 '''ChromeBrowser的接口实现
@@ -22,6 +15,7 @@ import win32api
 import win32com.client
 import win32event
 import win32gui
+import six
 
 from qt4w.browser.browser import IBrowser
 from qt4c.qpath import QPath
@@ -107,7 +101,7 @@ class ChromeBrowser(IBrowser):
             try:
                 webview = self.search_chrome_webview(url)
                 break
-            except RuntimeError, e:
+            except RuntimeError as e:
                 logging.warn('[ChromeBrowser] search chrome window failed: %s' % e)
                 time.sleep(0.5)
         else:
@@ -125,20 +119,20 @@ class ChromeBrowser(IBrowser):
     def get_browser_path():
         '''获取chorme.exe的路径
         '''
-        import _winreg
+        from six.moves import winreg
         sub_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome"
         try:
-            hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, sub_key)
-            install_dir, _ = _winreg.QueryValueEx(hkey, "InstallLocation")
-            _winreg.CloseKey(hkey)
+            hkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, sub_key)
+            install_dir, _ = winreg.QueryValueEx(hkey, "InstallLocation")
+            winreg.CloseKey(hkey)
         except WindowsError:
             try:
-                hkey = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, sub_key)
-                install_dir, _ = _winreg.QueryValueEx(hkey, "InstallLocation")
+                hkey = winreg.OpenKey(winreg.HKEY_CURRENT_USER, sub_key)
+                install_dir, _ = winreg.QueryValueEx(hkey, "InstallLocation")
             except WindowsError:
                 sub_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
-                hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, sub_key)
-                install_dir, _ = _winreg.QueryValueEx(hkey, "Path")
+                hkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, sub_key)
+                install_dir, _ = winreg.QueryValueEx(hkey, "Path")
         return install_dir + "\\chrome.exe"
     
     def search_chrome_webview(self, url):
@@ -154,7 +148,7 @@ class ChromeBrowser(IBrowser):
                 if it['url'] == url or re.match(url, it['url']):
                     title = self._handle_title(it['title'])
                     url = it['url']
-                    if isinstance(title, unicode): title = title.encode('utf8')
+                    if six.PY2 and isinstance(title, six.text_type): title = title.encode('utf8')
                     break
             else: continue
             break
@@ -178,7 +172,8 @@ class ChromeBrowser(IBrowser):
                     if win_title == title:
                         try:
                             win32gui.SetForegroundWindow(chrome_window.TopLevelWindow.HWnd)
-                        except:
+                        except Exception as e:
+                            print(e)
                             logging.warn('win32gui.SetForegroundWindow error')
                         self._webview = ChromeWebView(chrome_window, url, p.ProcessId)
                         return self._webview
@@ -265,8 +260,4 @@ def get_next_avail_port(port):
     
 if __name__ == '__main__':
     pass
-    # ChromeBrowser.killall()
-#     b = ChromeBrowser()
-#     for it in b.get_chrome_window_list(54140):
-#         print it.Parent.Text
     

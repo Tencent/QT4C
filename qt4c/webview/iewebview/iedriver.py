@@ -1,16 +1,9 @@
 # -*- coding: UTF-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 '''IE驱动模块
 
@@ -26,6 +19,7 @@ import win32gui, win32con
 import win32com.client.dynamic
 import pythoncom
 import pywintypes
+import six
 
 SID_SWebBrowserApp = pywintypes.IID('{0002DF05-0000-0000-C000-000000000046}')
 
@@ -142,12 +136,12 @@ class IEDriver(object):
         if not win: doc = self._doc
         else: doc = win.document
         frames = self.get_frames(doc)
-        if isinstance(frame_id, (str, unicode)) and len(frame_id) > 0:
+        if isinstance(frame_id, six.string_types) and len(frame_id) > 0:
             try:
                 frame = frames.item(frame_id)
                 doc = self._get_document(frame)
                 return doc.parentWindow
-            except pywintypes.com_error, e:
+            except pywintypes.com_error as e:
                 if (e.args[0] % 0x100000000) == 0x80020009 and (e.args[2][5] % 0x100000000) == 0x80020003:
                     # 找不到成员
                     raise RuntimeError('未找到id=%s 的frame' % frame_id)
@@ -201,7 +195,7 @@ class IEDriver(object):
         '''
         # script = 'document.script_result = function(){try{%s}catch(){}}();' % script #window.script_result无法获取
         logging.debug('[IEDriver] eval script: %s' % script[:200].strip())
-        if not isinstance(script, unicode):
+        if not isinstance(script, six.text_type):
             script = script.decode('utf8')  # 必须使用unicode编码
 
         if use_eval:
@@ -247,11 +241,10 @@ class IEDriver(object):
         name_id = frame_doc._oleobj_.GetIDsOfNames('script_result')
         result = frame_doc._oleobj_.Invoke(name_id, 0, pythoncom.DISPATCH_PROPERTYGET, True)
         if result == '': raise IEDriverError('JavaScript返回为空')
-        if isinstance(result, unicode):
+        if six.PY2 and isinstance(result, unicode):
             result = result.encode('utf8')
         logging.debug('[IEDriver] result: %s' % result[:200].strip())
         return result
     
 if __name__ == '__main__':
-    pass
-    
+    pass 

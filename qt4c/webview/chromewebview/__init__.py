@@ -1,16 +1,9 @@
 # -*- coding: UTF-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 
 '''Chrome WebView实现
@@ -21,7 +14,7 @@ import logging
 from qt4c.webview.base import WebViewBase
 from qt4c import qpath
 from qt4w.webdriver.webkitwebdriver import WebkitWebDriver
-from chromedriver import ChromeDriver
+from qt4c.webview.chromewebview.chromedriver import ChromeDriver
 
 
 class ChromeWebView(WebViewBase):
@@ -97,7 +90,7 @@ class ChromeWebView(WebViewBase):
         :param script:       要执行的JavaScript语句
         :type script:        string
         '''
-        from chromedriver import ChromeDriverError
+        from qt4c.webview.chromewebview.chromedriver import ChromeDriverError
         timeout = 10
         time0 = time.time()
         while time.time() - time0 < timeout:
@@ -108,8 +101,11 @@ class ChromeWebView(WebViewBase):
             try:
                 result = self._driver.eval_script(frame_id, script)
                 break
-            except ChromeDriverError, e:
-                if e.code == -32000:
+            except (ChromeDriverError, RuntimeError) as e:
+                if isinstance(e, RuntimeError):
+                    del self._frame_dict[''.join(frame_xpaths)]
+                    time.sleep(0.5)
+                elif e.code == -32000:
                     # Execution context with given id not found.
                     time.sleep(0.5)
                 else:

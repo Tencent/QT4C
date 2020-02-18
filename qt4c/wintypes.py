@@ -1,20 +1,18 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 import ctypes
 import win32con
 import os
+
+if ctypes.sizeof(ctypes.c_void_p) == 8:
+    ULONG_PTR = ctypes.c_ulonglong
+else:
+    ULONG_PTR = ctypes.c_ulong
     
 class RECT(ctypes.Structure):
     """The RECT structure defines the coordinates of the upper-left and lower-right corners of a rectangle
@@ -54,7 +52,7 @@ class PROCESSENTRY32(ctypes.Structure):
         ('dwSize', ctypes.c_ulong),
         ('cntUsage', ctypes.c_ulong),
         ('th32ProcessID', ctypes.c_ulong),
-        ('th32DefaultHeapID', ctypes.c_ulong),
+        ('th32DefaultHeapID', ULONG_PTR),
         ('th32ModuleID', ctypes.c_ulong),
         ('cntThreads', ctypes.c_ulong),
         ('th32ParentProcessID', ctypes.c_ulong),

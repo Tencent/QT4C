@@ -1,20 +1,16 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 '''
 控件基类模块
 '''
+from __future__ import division
+import six
+
 from testbase.util import Timeout
 from qt4c.mouse import Mouse, MouseFlag, MouseClickType
 from qt4c.keyboard import Keyboard
@@ -91,20 +87,20 @@ class Control(object):
             return
         (l, t, r, b) = self.BoundingRect.All
         if xOffset is None:
-            x = (l+r)/2
+            x = (l + r) // 2
         else:
             if xOffset < 0:
                 x = r + xOffset
             else:
                 x = l + xOffset
         if yOffset is None:
-            y = (t+b)/2
+            y = (t + b) // 2
         else:
             if yOffset < 0:
                 y = b + yOffset
             else:
                 y = t + yOffset        
-        Mouse.click(x,y, mouseFlag, clickType)
+        Mouse.click(x, y, mouseFlag, clickType)
         
     def click(self, mouseFlag=MouseFlag.LeftButton, 
                     clickType=MouseClickType.SingleClick,
@@ -122,7 +118,7 @@ class Control(object):
         '''
         self.hover()
         x, y = self._getClickXY(xOffset, yOffset)
-        Mouse.click(x,y, mouseFlag, clickType)
+        Mouse.click(x, y, mouseFlag, clickType)
         
     def _getClickXY(self, xOffset, yOffset):
         '''通过指定的偏移值确定具体要点击的x,y坐标
@@ -131,14 +127,14 @@ class Control(object):
             return
         (l, t, r, b) = self.BoundingRect.All
         if xOffset is None:
-            x = (l+r)/2
+            x = (l + r) // 2
         else:
             if xOffset < 0:
                 x = r + xOffset
             else:
                 x = l + xOffset
         if yOffset is None:
-            y = (t+b)/2
+            y = (t + b) // 2
         else:
             if yOffset < 0:
                 y = b + yOffset
@@ -184,8 +180,14 @@ class Control(object):
                         self.BoundingRect.Right,
                         self.BoundingRect.Bottom
                         )
-        x, y = (l+r)/2, (t+b)/2
+        x, y = (l + r) // 2, (t + b) // 2
         Mouse.drag(x, y, toX, toY)
+
+    def scroll(self, backward=True):
+        '''发送鼠标滚动命令
+        '''
+        self.hover()
+        Mouse.scroll(backward)
     
     def sendKeys(self, keys):
         '''发送按键命令
@@ -243,14 +245,13 @@ class ControlContainer(object):
     
     当一个类继承本接口，并设置Locator属性后，该类可以使用Controls属于获取控件。如
     
-    >>>class SysSettingWin(gf.GFWindow, ControlContainer)
+    >>>class SysSettingWin(uia.UIAWindows, ControlContainer)
             def __init__(self):
-                locators={'基本设置Tab': {'type':gf.Button, 'root':self, 'locator'='Finger_Btn'},
-                          '常规页': {'type':gf.Control, 'root':self, 'locator'='PageBasicGeneral'},
-                          '退出程序单选框': {'type':gf.RadioBox, 'root':'@常规页','locator'=QPath("/name='ExitPrograme_RI' && maxdepth='10'")}}
+                locators={'常规页': {'type':uia.Control, 'root':self, 'locator'='PageBasicGeneral'},
+                          '退出程序单选框': {'type':uia.RadioButton, 'root':'@常规页','locator'=QPath("/name='ExitPrograme_RI' && maxdepth='10'")}}
                 self.updateLocator(locators)
                                  
-    则SysSettingWin().Controls['基本设置Tab']返回设置窗口上基本设置Tab的gf.Button实例,
+    则SysSettingWin().Controls['常规页']返回设置窗口上常规页的uia.Control实例,
     而SysSettingWin().Controls['退出程序单选框']，返回设置窗口的常规页下的退出程序单选框实例。
     其中'root'='@常规页'中的'@常规页'表示参数'root'的值不是这个字符串，而是key'常规页'指定的控件。
     '''
@@ -266,7 +267,7 @@ class ControlContainer(object):
         del params['type']
         for key in params:
             value = params[key]
-            if isinstance(value, basestring) and value.startswith('@'):
+            if isinstance(value, six.string_types) and value.startswith('@'):
                 params[key] = self.__findctrl_recur(value[1:])
         return ctrltype(**params)
         
@@ -289,7 +290,7 @@ class ControlContainer(object):
         
         :rtype: boolean
         '''
-        return self._locators.has_key(control_key)
+        return control_key in self._locators
     
     def updateLocator(self, locators):
         '''更新控件定位参数
@@ -312,11 +313,7 @@ class ControlContainer(object):
     def Controls(self):
         '''返回控件集合。使用如foo.Controls['最小化按钮']的形式获取控件
         '''
-        return self
-        
-        
-        
-    
-            
+        return self   
+  
 if __name__ == "__main__":
     pass

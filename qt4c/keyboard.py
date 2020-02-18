@@ -1,16 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# Tencent is pleased to support the open source community by making QTA available.
-# Copyright (C) 2016THL A29 Limited, a Tencent company. All rights reserved.
-# Licensed under the BSD 3-Clause License (the "License"); you may not use this 
-# file except in compliance with the License. You may obtain a copy of the License at
-# 
-# https://opensource.org/licenses/BSD-3-Clause
-# 
-# Unless required by applicable law or agreed to in writing, software distributed 
-# under the License is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS
-# OF ANY KIND, either express or implied. See the License for the specific language
-# governing permissions and limitations under the License.
+# Tencent is pleased to support the open source community by making QT4C available.  
+# Copyright (C) 2020 THL A29 Limited, a Tencent company.  All rights reserved.
+# QT4C is licensed under the BSD 3-Clause License, except for the third-party components listed below. 
+# A copy of the BSD 3-Clause License is included in this file.
 #
 '''键盘输入模块
 '''
@@ -18,6 +11,9 @@ import time
 import ctypes
 import win32con
 import win32api
+import sys
+from ctypes import wintypes
+import six
 
 _SHIFT = {'~' : '`', '!' : '1', '@' : '2','#' : '3', '$' : '4','%' : '5','^' : '6','&' : '7','*' : '8','(' : '9',')' : '0','_' : '-','+' : '=',
     '{' : '[','}' : ']','|' : '\\',':' : ';','"' : "'",'<' : ',','>' : '.','?' : '/'}
@@ -44,7 +40,7 @@ _CODES = {
     'BKSP':8, 'TAB':9, 'ENTER':13, 'ESC':27, 'END':35, 'HOME':36,'INSERT':45, 'DEL':46, 
     'SPACE':32,'PGUP':33,'PGDN':34,'LEFT':37,'UP':38,'RIGHT':39,'DOWN':40,'PRINT':44,
     'SHIFT':16, 'CTRL':17, 'MENU':18, 'ALT':18,
-    'APPS':93, 'CAPS':20, 'WIN':91, 'LWIN': 91, 'RWIN':92,
+    'APPS':93, 'CAPS':20, 'WIN':91, 'LWIN': 91, 'RWIN':92, 'NUM':144, 'SCRLK':145
     }
 
 def _scan2vkey(scan):
@@ -56,49 +52,95 @@ class _KeyboardEvent(object):
         KEYEVENTF_KEYUP  = 2
         KEYEVENTF_UNICODE     = 4
         KEYEVENTF_SCANCODE    = 8
-        
 
-class _MOUSEINPUT(ctypes.Structure):
-    _fields_ = [
-        ('dx', ctypes.c_long),
-        ('dy', ctypes.c_long),
-        ('mouseData', ctypes.c_ulong),
-        ('dwFlags', ctypes.c_ulong),
-        ('time', ctypes.c_ulong),
-        ('dwExtraInfo', ctypes.c_ulong),
-    ]
+is_64bits = sys.maxsize > 2**32
+MAPVK_VK_TO_VSC = 0
 
-class _HARDWAREINPUT(ctypes.Structure):
-    _fields_ = [
-        ('uMsg', ctypes.c_ulong),
-        ('wParamL', ctypes.c_ushort),
-        ('wParamH', ctypes.c_ushort),
-    ]
+if is_64bits:
+    wintypes.ULONG_PTR = wintypes.WPARAM
+    class _MOUSEINPUT(ctypes.Structure):
+        _fields_ = (("dx",          wintypes.LONG),
+                    ("dy",         wintypes.LONG),
+                    ("mouseData",   wintypes.DWORD),
+                    ("dwFlags",     wintypes.DWORD),
+                    ("time",        wintypes.DWORD),
+                    ("dwExtraInfo", wintypes.ULONG_PTR))
 
-class _KEYBDINPUT(ctypes.Structure):
-    _fields_ = [
-        ('wVk', ctypes.c_ushort),
-        ('wScan', ctypes.c_ushort),
-        ('dwFlags', ctypes.c_ulong),
-        ('time', ctypes.c_ulong),
-        ('dwExtraInfo', ctypes.c_ulong),
-    ]
+    class _HARDWAREINPUT(ctypes.Structure):
+        _fields_ = (("uMsg",    wintypes.DWORD),
+                    ("wParamL", ctypes.wintypes.WORD),
+                    ("wParamH", ctypes.wintypes.WORD))
 
-class _UNION_INPUT_STRUCTS(ctypes.Union):
-    "The C Union type representing a single Event of any type"
-    _fields_ = [
-        ('mi', _MOUSEINPUT),
-        ('ki', _KEYBDINPUT),
-        ('hi', _HARDWAREINPUT),
-    ]
+    class _KEYBDINPUT(ctypes.Structure):
+        _fields_ = (("wVk",         wintypes.WORD),
+                    ("wScan",       wintypes.WORD),
+                    ("dwFlags",     wintypes.DWORD),
+                    ("time",        wintypes.DWORD),
+                    ("dwExtraInfo", wintypes.ULONG_PTR))
 
-class _INPUT(ctypes.Structure):
-    _fields_ = [
-        ('type', ctypes.c_ulong),
-        ('_', _UNION_INPUT_STRUCTS),
-    ]
+        def __init__(self, *args, **kwds):
+            super(_KEYBDINPUT, self).__init__(*args, **kwds)
+            # some programs use the scan code even if KEYEVENTF_SCANCODE
+            # isn't set in dwFflags, so attempt to map the correct code.
+            if not self.dwFlags & _KeyboardEvent.KEYEVENTF_UNICODE:
+                self.wScan = ctypes.windll.user32.MapVirtualKeyExW(self.wVk,
+                                                    MAPVK_VK_TO_VSC, 0)
+
+    class _UNION_INPUT_STRUCTS(ctypes.Union):
+        "The C Union type representing a single Event of any type"
+        _fields_ = [
+            ('mi', _MOUSEINPUT),
+            ('ki', _KEYBDINPUT),
+            ('hi', _HARDWAREINPUT),
+        ]
+
+    class _INPUT(ctypes.Structure):
+        _anonymous_ = ("_",)
+        _fields_ = (("type",   wintypes.DWORD),
+                    ("_", _UNION_INPUT_STRUCTS))
+
+    LPINPUT = ctypes.POINTER(_INPUT)
+else:
+    class _MOUSEINPUT(ctypes.Structure):
+        _fields_ = [
+            ('dx', ctypes.c_long),
+            ('dy', ctypes.c_long),
+            ('mouseData', ctypes.c_ulong),
+            ('dwFlags', ctypes.c_ulong),
+            ('time', ctypes.c_ulong),
+            ('dwExtraInfo', ctypes.c_ulong),
+        ]
+
+    class _HARDWAREINPUT(ctypes.Structure):
+        _fields_ = [
+            ('uMsg', ctypes.c_ulong),
+            ('wParamL', ctypes.c_ushort),
+            ('wParamH', ctypes.c_ushort),
+        ]
 
 
+    class _KEYBDINPUT(ctypes.Structure):
+        _fields_ = [
+            ('wVk', ctypes.c_ushort),
+            ('wScan', ctypes.c_ushort),
+            ('dwFlags', ctypes.c_ulong),
+            ('time', ctypes.c_ulong),
+            ('dwExtraInfo', ctypes.c_ulong),
+        ]
+
+    class _UNION_INPUT_STRUCTS(ctypes.Union):
+        "The C Union type representing a single Event of any type"
+        _fields_ = [
+            ('mi', _MOUSEINPUT),
+            ('ki', _KEYBDINPUT),
+            ('hi', _HARDWAREINPUT),
+        ]
+
+    class _INPUT(ctypes.Structure):
+        _fields_ = [
+            ('type', ctypes.c_ulong),
+            ('_', _UNION_INPUT_STRUCTS),
+        ]
 
 class KeyInputError(Exception):
     '''键盘输入错误
@@ -118,7 +160,7 @@ class Key(object):
         '''
         self._flag = 0
         self._modifiers = []
-        if isinstance(key, basestring):
+        if isinstance(key, six.string_types):
             self._scan = ord(key)
             if self._scan < 256: #ASCII code
                 self._vk = _scan2vkey(self._scan)
@@ -165,7 +207,6 @@ class Key(object):
         if up:
             inp._.ki.dwFlags |= _KeyboardEvent.KEYEVENTF_KEYUP
         ctypes.windll.user32.SendInput(1,ctypes.byref(inp),ctypes.sizeof(_INPUT))
-        
     
     def inputKey(self):
         '''键盘模拟输入按键
@@ -212,7 +253,7 @@ class Key(object):
             return True
         
     def _isToggled(self):
-        """该键是否被开启，如CAps Lock或Num Lock等
+        """该键是否被开启，如Caps Lock或Num Lock等
         """
         if(win32api.GetKeyState(self._vk) & 1):
             return True
@@ -308,7 +349,7 @@ class Keyboard(object):
         :param interval: 输入的字符和字符之间的暂停间隔。
         '''
 
-        if not isinstance(keys, unicode):
+        if not isinstance(keys, six.text_type):
             keys = keys.decode('utf-8')
         keys = Keyboard._parse_keys(keys)
     
@@ -328,7 +369,7 @@ class Keyboard(object):
         :type interval: number
         :param interval: 输入的字符和字符之间的暂停间隔。
         '''
-        if not isinstance(keys, unicode):
+        if not isinstance(keys, six.text_type):
             keys = keys.decode('utf-8')
         keys = Keyboard._parse_keys(keys)
     
@@ -343,7 +384,7 @@ class Keyboard(object):
         if Keyboard._pressedkey:
             raise ValueError("尚有按键未释放,请先对按键进行释放,未释放的按键为: %s"%Keyboard._pressedkey)
             
-        if not isinstance(key, unicode):
+        if not isinstance(key, six.text_type):
             key = key.decode('utf-8')
         keys = Keyboard._parse_keys(key)
         if len(keys) != 1:
@@ -360,7 +401,7 @@ class Keyboard(object):
             raise Exception("没有可释放的按键")
         
         key = Keyboard._pressedkey                
-        if not isinstance(key, unicode):
+        if not isinstance(key, six.text_type):
             key = key.decode('utf-8')
         keys = Keyboard._parse_keys(key)
         if len(keys) != 1:
@@ -372,7 +413,7 @@ class Keyboard(object):
     def isPressed(key):
         """是否被按下
         """
-        if not isinstance(key, unicode):
+        if not isinstance(key, six.text_type):
             key = key.decode('utf-8')
         keys = Keyboard._parse_keys(key)
         if len(keys) != 1:
@@ -390,7 +431,7 @@ class Keyboard(object):
     def isTroggled(key):
         """是否开启，如Caps Lock或Num Lock等
         """
-        if not isinstance(key, unicode):
+        if not isinstance(key, six.text_type):
             key = key.decode('utf-8')
         keys = Keyboard._parse_keys(key)
         if len(keys) != 1:

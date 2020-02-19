@@ -16,7 +16,7 @@ QT4C (Quick Test for Client)，基于QTA提供面向Win32应用的UI测试自动
 * 强大UI驱动引擎支持，Windows Native控件、Web控件、Accessibility控件
 * 基于QPath技术和QTA UI框架，降低产品变化的脚本维护投入
 
-QT4C需要和[QTAF]((https://github.com/Tencent/QTAF)一起使用，请先参考QTAF的使用
+QT4C需要和[QTAF](https://github.com/Tencent/QTAF)一起使用，请先参考QTAF的使用
 
 ------------------------------
 

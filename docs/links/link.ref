@@ -24,3 +24,6 @@
 
 .. _inspect-usage: https://docs.microsoft.com/en-us/windows/desktop/winauto/inspect-objects#using-inspect
 .. |inspect-usage| replace:: Inspect.exe介绍
+
+.. _demo-project: https://github.com/qtacore/QT4CDemoProj
+.. |demo-project| replace:: Demo工程

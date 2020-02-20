@@ -1,3 +1,4 @@
 sphinx==1.8
 recommonmark
 sphinx_rtd_theme
+sphinx-autoapi

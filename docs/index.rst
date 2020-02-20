@@ -22,16 +22,6 @@ QT4C（原名为TUIA），即Quick Test for Client，是基于QTA框架提供的
    input
    web
 
-========
-接口文档
-========
-
-.. toctree::
-   :maxdepth: 1
-   
-   apiref
-   
-
 索引和搜索
 ==========
 

@@ -337,3 +337,8 @@ Native, UIA是控件的实现方式的差异导致，在同种实现方式下，
 指定之后可以这样使用::
 
    cw['设置Value值'].Value = 'value'
+
+==============
+Demo工程
+==============
+你可以从github下载《|demo-project|_》，其中包括demo测试项目源码，Demo工程中以Windows自带的计算器为例，提供了Windows Native控件及UIA控件的使用参考，同时提供了Web自动化的测试用例。

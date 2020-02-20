@@ -1,0 +1,30 @@
+language: python
+matrix:
+  include:
+  - os: windows
+    dist: trusty
+    sudo: false
+    python: '2.7'
+    env: BUILD_SDIST=true
+  - os: windows
+    dist: trusty
+    sudo: false
+    python: '3.6'
+  - os: windows
+    dist: xenial
+    sudo: false
+    python: '3.7'
+install:
+- pip install -r requirements.txt
+script:
+- python tests/__init__.py
+before_deploy: echo $TRAVIS_TAG | sed 's/^.//' > version.txt
+deploy:
+  skip_cleanup: true
+  provider: pypi
+  user: qta
+  on:
+    tags: true
+    condition: "$TRAVIS_TAG =~ v[0-9]+\\.[0-9]+\\.[0-9]+ && $BUILD_SDIST = true"
+  password:
+    secure: TF1XGFqi6gwsJC6fy+GT34Xlr+wek/GlqnbK9/eHC1T3t+Vv/C1Y+GcKWLgyE4ewRwwTi4JSWjVZFIsZmO89lsls9sD5llVFn84cV68noYYhYFQh89uIXkr7M9A8blk34YC6N++Ess6IzmcMMOtYrA+Q4R/olVUljheiwlpPERqGzi/8sEU1RDqXemSCguMkrhilCRHefjkVpWVl1WxEAx+TU23z2ml6wt63e+zQBC8+ey9D/LpeXvRd+Pg2SzhUqeNxDLg3E733IqRx1e0+KHXs+stA/0KUJA0hd1EHS7521PdyphftOPNFf3DC2wwgS44PxgzJ1ACFyVxPWn6iiOEt4CwL9uFlGUx8r3VE/KI0K3Z9WDFYNHK/kgC1yW3cFFkORmDiV+ktgmbQ+jrBVJ+3rksmHvUes6Pf1ZLrKx3BJIR6/RrgxH8MOKixjEGzhN8v/4SJ6lyHYdjCZr84FlXkHWLGO3tEQTo2VTyjBEaJNMCLvS/qjUJAJxQffybmwNCuTfrR2fbPE/k5fXM2zfgjR3oWLpQ0QV3p6Nq3FaNvRi59g/5o70AqLEfFm4navODDiZxYagX7yEPOewHW3qSG8W3eVGnbIFrHp6MtLxfxTAsY57xf3QuJFGjrys2qi58b5sEKnSM8uarFi1aCOx3ssmT2vzSIOZQo5xCuWJ4=

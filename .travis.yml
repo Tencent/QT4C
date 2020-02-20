@@ -4,18 +4,30 @@ matrix:
   - os: windows
     dist: trusty
     sudo: false
-    python: '2.7'
+    language: sh
+    python: "2.7"
+    before_install:
+        - choco install python2 --params '"/InstallDir:C:\Python2"'
+        - export PATH="/c/Python2:/c/Python2/Scripts:$PATH"
     env: BUILD_SDIST=true
   - os: windows
     dist: trusty
     sudo: false
-    python: '3.6'
+    language: sh
+    python: "3.6"
+    before_install:
+        - choco install python --version 3.6
+        - export PATH="/c/Python36:/c/Python36/Scripts:$PATH"
   - os: windows
     dist: xenial
     sudo: false
-    python: '3.7'
+    language: sh
+    python: "3.7"
+    before_install:
+        - choco install python --version 3.7
+        - export PATH="/c/Python37:/c/Python37/Scripts:$PATH"
 install:
-- pip install -r requirements.txt
+- python -m pip install -r requirements.txt
 script:
 - python tests/__init__.py
 before_deploy: echo $TRAVIS_TAG | sed 's/^.//' > version.txt

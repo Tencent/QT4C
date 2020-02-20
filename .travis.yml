@@ -1,23 +1,23 @@
 language: python
 matrix:
   include:
-  - os: windows
+  - os: linux
     dist: trusty
     sudo: false
     python: '2.7'
     env: BUILD_SDIST=true
-  - os: windows
+  - os: linux
     dist: trusty
     sudo: false
     python: '3.6'
-  - os: windows
+  - os: linux
     dist: xenial
     sudo: false
     python: '3.7'
 install:
 - pip install -r requirements.txt
 script:
-- python tests/__init__.py
+- python --version
 before_deploy: echo $TRAVIS_TAG | sed 's/^.//' > version.txt
 deploy:
   skip_cleanup: true
@@ -27,4 +27,4 @@ deploy:
     tags: true
     condition: "$TRAVIS_TAG =~ v[0-9]+\\.[0-9]+\\.[0-9]+ && $BUILD_SDIST = true"
   password:
-    secure: TF1XGFqi6gwsJC6fy+GT34Xlr+wek/GlqnbK9/eHC1T3t+Vv/C1Y+GcKWLgyE4ewRwwTi4JSWjVZFIsZmO89lsls9sD5llVFn84cV68noYYhYFQh89uIXkr7M9A8blk34YC6N++Ess6IzmcMMOtYrA+Q4R/olVUljheiwlpPERqGzi/8sEU1RDqXemSCguMkrhilCRHefjkVpWVl1WxEAx+TU23z2ml6wt63e+zQBC8+ey9D/LpeXvRd+Pg2SzhUqeNxDLg3E733IqRx1e0+KHXs+stA/0KUJA0hd1EHS7521PdyphftOPNFf3DC2wwgS44PxgzJ1ACFyVxPWn6iiOEt4CwL9uFlGUx8r3VE/KI0K3Z9WDFYNHK/kgC1yW3cFFkORmDiV+ktgmbQ+jrBVJ+3rksmHvUes6Pf1ZLrKx3BJIR6/RrgxH8MOKixjEGzhN8v/4SJ6lyHYdjCZr84FlXkHWLGO3tEQTo2VTyjBEaJNMCLvS/qjUJAJxQffybmwNCuTfrR2fbPE/k5fXM2zfgjR3oWLpQ0QV3p6Nq3FaNvRi59g/5o70AqLEfFm4navODDiZxYagX7yEPOewHW3qSG8W3eVGnbIFrHp6MtLxfxTAsY57xf3QuJFGjrys2qi58b5sEKnSM8uarFi1aCOx3ssmT2vzSIOZQo5xCuWJ4=
+    secure: M2fDvZQ2fH3DlIxvr85HC9fXEHgbyNi+F4YHZTfxGX1ByFzTHyv1f338JHJzykXgMiEho97JvNDfFS+20xf/F8wB02YW7bjCX3YLJtGo+n8CAc+W82A3frm9GEKmIJ+gZ9PJzSCdx8QZVaZwFZt/A5Pxbi1A8yMSnfau6W36zrhGPEvq7oG+8JlxLqicrQTC4wao2ar+2ZqgHwQCoo9OGclJ+7JY1cHNoKAnHQZd718Sl2DHGDNyMhF5zCvS1wlHtwB6Y53vWYSVJtyhQua57co6PQv8IH8E7Avg8nc/Gjlsiv/Qh4DnVQih0jphCDe+uyQMzqY1VD+iOjnqYv8XcedyENUeBfkj+AE3NTu7aXN+hLsMw+mNdqpgUS0aaqFH5DGKzjhqZIP+8FNeqIcVCdH6XCaWWnrfyqRyQbE1AJArezMWt8pqUVZtkk/dpbS7sA3c6BGtLigRLe0X5fykIZEunD8t0xrVrSsItQi4IwLTSeeUQMoGBoVdIrWGjSc1zWPUCugx7Hd4woF3vLxWA8Ipref8pMaXMvnV02QT1RwCvGPTdgc278X8HC378T0wZjJ6weqSSYTxwT6gttXruYKtB85wc5zzcBHOg7ow1k/2pXCD0dd5ACpT5OUAJemi0ZW7BVoNjX0AR8kY+4acdeySt6T08lVcegg6N2A5ZH0=

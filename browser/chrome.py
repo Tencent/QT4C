@@ -121,6 +121,7 @@ class ChromeBrowser(IBrowser):
         '''
         from six.moves import winreg
         sub_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome"
+        install_dir = ''
         try:
             hkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, sub_key)
             install_dir, _ = winreg.QueryValueEx(hkey, "InstallLocation")
@@ -130,10 +131,24 @@ class ChromeBrowser(IBrowser):
                 hkey = winreg.OpenKey(winreg.HKEY_CURRENT_USER, sub_key)
                 install_dir, _ = winreg.QueryValueEx(hkey, "InstallLocation")
             except WindowsError:
-                sub_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
-                hkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, sub_key)
-                install_dir, _ = winreg.QueryValueEx(hkey, "Path")
-        return install_dir + "\\chrome.exe"
+                try:
+                    sub_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
+                    hkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, sub_key)
+                    install_dir, _ = winreg.QueryValueEx(hkey, "Path")
+                except WindowsError:
+                    for env_dir in os.getenv('PATH').split(';'):
+                        if os.path.exists(os.path.join(env_dir, 'chrome.exe')):
+                            install_dir = env_dir
+                            break
+                    if not install_dir:
+                        app_dirs = [os.getenv('LOCALAPPDATA'), os.getenv('ProgramFiles(x86)'), os.getenv('ProgramW6432')]
+                        for app_dir in app_dirs:
+                            if(os.path.exists(os.path.join(app_dir, r'Google\Chrome\Application', 'chrome.exe'))):
+                                install_dir = os.path.join(app_dir, r'Google\Chrome\Application')
+                                break
+        if not install_dir:
+            raise WindowsError('未找到Chrome可执行文件路径')
+        return os.path.join(install_dir, "chrome.exe")
     
     def search_chrome_webview(self, url):
         '''根据url查找chrome对应的webview类

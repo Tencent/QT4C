@@ -9,6 +9,9 @@ QT4C依赖Testbase模块,使用前请参考《|qtaf-setup|_》
 
    pip install comtypes PIL pywin32
 
+(python 3.x)中 PIL 需要用pillow代替
+   pip install comtypes pillow  pywin32
+
 也可以通过以下链接下载：
 
 :download:`Python依赖库下载 <https://www.lfd.uci.edu/~gohlke/pythonlibs/>`

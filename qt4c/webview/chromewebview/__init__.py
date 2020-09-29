@@ -70,7 +70,12 @@ class ChromeWebView(WebViewBase):
             else:
                 frame_exist = True
                 for i in range(len(frame_xpaths)):
-                    name, url = self._webdriver._get_frame_info(frame_xpaths[:i + 1])
+                    try:
+                        name, url = self._webdriver._get_frame_info(frame_xpaths[:i + 1])
+                    except Exception as e:
+                        logging.error('[ChromeWebView] _get_frame_info_error %s' % e)
+                        frame_exist = False
+                        break
                     frame_tree = self._get_frame(frame_tree, name, url)
                     if frame_tree == None:
                         # 未找到frame

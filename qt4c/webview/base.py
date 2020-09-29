@@ -77,6 +77,15 @@ class WebViewBase(IWebView):
             new_x += self._window.BoundingRect.Left - self._offscreen_win.BoundingRect.Left
             new_y += self._window.BoundingRect.Top - self._offscreen_win.BoundingRect.Top
         Mouse.click(new_x, new_y, flag, click_type)
+
+    def _inner_long_click(self, flag, x_offset, y_offset, duration):
+        self.activate()
+        x_offset, y_offset = self._handle_offset(x_offset, y_offset)
+        new_x, new_y = win32gui.ClientToScreen(self._window.HWnd, (int(x_offset), int(y_offset)))
+        if self._offscreen_win:
+            new_x += self._window.BoundingRect.Left - self._offscreen_win.BoundingRect.Left
+            new_y += self._window.BoundingRect.Top - self._offscreen_win.BoundingRect.Top
+        Mouse._clickSlowly(new_x, new_y, flag, duration)
         
     def click(self, x_offset, y_offset):  
         self._inner_click(MouseFlag.LeftButton, MouseClickType.SingleClick, x_offset, y_offset)
@@ -88,7 +97,7 @@ class WebViewBase(IWebView):
         self._inner_click(MouseFlag.RightButton, MouseClickType.SingleClick, x_offset, y_offset)
     
     def long_click(self, x_offset, y_offset, duration=1):
-        raise NotImplementedError
+        self._inner_long_click(MouseFlag.LeftButton, x_offset, y_offset, duration)
         
     def hover(self, x_offset, y_offset):
         self.activate()

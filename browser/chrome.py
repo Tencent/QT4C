@@ -72,7 +72,8 @@ class ChromeBrowser(IBrowser):
         temp_dir = self._temp_dir % self._port
         exe_path = ChromeBrowser.get_browser_path()
         params = "--remote-debugging-port=%d --disable-session-crashed-bubble --disable-features=TranslateUI --disable-breakpad --no-first-run --new-window --disable-desktop-notifications --user-data-dir=%s" % (self._port, temp_dir)
-        cmd = ' '.join([exe_path, params, url])
+        ext_params = os.environ.get('CHROME_EXT_PARAMS', '')
+        cmd = ' '.join([i for i in [exe_path, params, ext_params, url] if i])
         logging.debug('chrome: %s' % cmd)
         _, _, pid, _ = win32process.CreateProcess(None, cmd, None, None, 0, 0, None, None, win32process.STARTUPINFO())
         handle = win32api.OpenProcess(win32con.PROCESS_QUERY_INFORMATION, False, pid)

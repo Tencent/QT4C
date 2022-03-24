@@ -2,4 +2,5 @@ qtaf>=5.4.0
 Pillow
 comtypes
 websocket-client
-pywin32<=224; sys_platform == 'win32'
+pywin32<=224; sys_platform == 'win32' and python_version <= '3.7'
+pywin32==228; sys_platform == 'win32' and python_version >= '3.8'

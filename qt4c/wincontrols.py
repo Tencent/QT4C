@@ -179,7 +179,10 @@ class Control(control.Control):
         :rtype: util.Rectangle
         :return: util.Rectangle实例
         """
-        return util.Rectangle(win32gui.GetWindowRect(self.HWnd))
+        scale = util.getDpi()
+        rect = win32gui.GetWindowRect(self.HWnd)
+        rect = [it * scale for it in rect]
+        return util.Rectangle(rect)
     
     @property
     def Caption(self):
@@ -412,7 +415,9 @@ class Control(control.Control):
                                                               如果为负值，代表距离控件区域右上角的y轴上的绝对值偏移；
         '''
         x, y = self._getClickXY(xOffset, yOffset)
-        Mouse.sendClick(self.HWnd, x,y, mouseFlag, clickType)
+        # Mouse.sendClick(self.HWnd, x,y, mouseFlag, clickType)
+        # TODO:修改click调用底层接口
+        Mouse.click(x, y, MouseFlag, clickType)
         
     def setFocus(self):
         '''将此控件设为焦点

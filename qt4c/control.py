@@ -269,7 +269,13 @@ class ControlContainer(object):
             value = params[key]
             if isinstance(value, six.string_types) and value.startswith('@'):
                 params[key] = self.__findctrl_recur(value[1:])
-        return ctrltype(**params)
+        if issubclass(ctrltype, Control):
+            return ctrltype(**params)
+        else:
+            root = params.pop("root", None)
+            if root == None:
+                root = self
+            return ctrltype(root, ctrlkey, **params)
         
         
     def __getitem__(self, index):

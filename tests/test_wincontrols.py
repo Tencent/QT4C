@@ -16,13 +16,16 @@ except:
     import mock
 
 from qt4c.wincontrols import Control
+import qt4c.util
 from qt4c.util import Rectangle
+
 
 class ControlTest(unittest.TestCase):
     '''Control类单元测试
     '''
     @mock.patch('win32gui.GetWindowRect', return_value=(0, 0, 100, 200))
-    def test_boundingrect(self, mockGetWindowRect):
+    @mock.patch("qt4c.util.getDpi", return_value=1)
+    def test_boundingrect(self, mockGetWindowRect, mockGetDpi):
         control = Control()
         self.assertEqual(control.BoundingRect, Rectangle((0, 0, 100, 200)))
 

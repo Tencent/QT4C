@@ -417,7 +417,7 @@ class Control(control.Control):
         x, y = self._getClickXY(xOffset, yOffset)
         # Mouse.sendClick(self.HWnd, x,y, mouseFlag, clickType)
         # TODO:修改click调用底层接口
-        Mouse.click(x, y, MouseFlag, clickType)
+        Mouse.click(x, y, mouseFlag, clickType)
         
     def setFocus(self):
         '''将此控件设为焦点

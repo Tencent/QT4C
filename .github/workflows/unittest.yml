@@ -23,9 +23,18 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
+        if: matrix.python-version != '2.7'
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install Windows Python 2.7
+        shell: cmd
+        if: matrix.python-version == '2.7'
+        run: |
+          choco install wget --no-progress
+          wget -nv "https://www.python.org/ftp/python/2.7.18/python-2.7.18.amd64.msi"
+          start /wait msiexec.exe /passive /i python-2.7.18.amd64.msi /norestart /L*V "python_install.log" ADDLOCAL=ALL ALLUSERS=1 TARGETDIR=c:\python27
+          type "python_install.log"
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip pytest codecov mock

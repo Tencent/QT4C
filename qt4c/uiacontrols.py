@@ -331,7 +331,13 @@ class Control(control.Control):
     def ClassName(self):
         """返回ClassName
         """
-        return self._uiaobj.CurrentClassName   
+        return self._uiaobj.CurrentClassName
+
+    @property
+    def AutomationId(self):
+        """返回AutomationId
+        """
+        return self._uiaobj.CurrentAutomationId
    
 
         

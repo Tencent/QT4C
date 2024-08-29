@@ -15,8 +15,6 @@ import win32gui
 import winerror
 import time
 
-from . import util
-
 class MouseFlag(object):
     '''鼠标按键枚举类
     '''
@@ -66,12 +64,6 @@ class Mouse(object):
     _last_click_time = time.time()
     
     @staticmethod
-    def handle_position(x, y):
-        """坐标转换"""
-        scale = util.getDpi()
-        return int(x / scale), int(y / scale)
-
-    @staticmethod
     def click(x, y, flag=MouseFlag.LeftButton, 
               clicktype=MouseClickType.SingleClick):
         """鼠标点击(x,y)点
@@ -85,7 +77,6 @@ class Mouse(object):
         :param clickType: 鼠标动作,如双击还是单击
         :type clickType: qt4c.mouse.MouseClickType
         """
-        x, y = Mouse.handle_position(x, y)
         win32api.SetCursorPos((x,y))
         win32api.mouse_event(_mouse_msg[flag][0] | _mouse_msg[flag][1],0,0,0,0)
         if clicktype != MouseClickType.SingleClick:

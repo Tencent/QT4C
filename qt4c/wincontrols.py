@@ -179,10 +179,7 @@ class Control(control.Control):
         :rtype: util.Rectangle
         :return: util.Rectangle实例
         """
-        scale = util.getDpi()
-        rect = win32gui.GetWindowRect(self.HWnd)
-        rect = [it * scale for it in rect]
-        return util.Rectangle(rect)
+        return util.Rectangle(win32gui.GetWindowRect(self.HWnd))
     
     @property
     def Caption(self):

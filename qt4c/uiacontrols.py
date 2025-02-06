@@ -18,7 +18,7 @@ from testbase import logger
 from testbase.util import LazyInit
 
 from qt4c import wincontrols
-from qt4c import control
+from qt4c import control, util
 from qt4c.util import Rectangle,Timeout
 from qt4c.mouse import Mouse,MouseFlag,MouseClickType
 from qt4c.keyboard import Keyboard
@@ -198,8 +198,10 @@ class Control(control.Control):
                           ))
         
     def _getrect(self):
-        rect = {'Left':0,'Top':0,'Width':0,'Height':0}
-        ( rect['Left'], rect['Top'], rect['Width'], rect['Height'])=self._uiaobj.GetCurrentPropertyValue(IUIAutomation.UIA_BoundingRectanglePropertyId)
+        rect = {'Left': 0, 'Top': 0, 'Width': 0, 'Height': 0}
+        scale = util.getDpi()
+        (rect['Left'], rect['Top'], rect['Width'], rect['Height']) = self._uiaobj.GetCurrentPropertyValue(IUIAutomation.UIA_BoundingRectanglePropertyId)
+        rect = {k: v * scale for k, v in rect.items()}
         return rect
     
     def click(self, mouseFlag = MouseFlag.LeftButton,
